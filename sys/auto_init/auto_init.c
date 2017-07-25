@@ -182,6 +182,10 @@ void auto_init(void)
     auto_init_at86rf2xx();
 #endif
 
+#ifdef MODULE_RAIL
+    extern void auto_init_rail(void);
+    auto_init_rail();
+#endif
 #ifdef MODULE_CC2420
     extern void auto_init_cc2420(void);
     auto_init_cc2420();
