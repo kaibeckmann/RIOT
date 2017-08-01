@@ -9,6 +9,12 @@ ifneq ($(RIOTBASE),)
 include $(RIOTBASE)/Makefile.base
 endif
 
+
+# todo
+# patch (from EFM2RIOT)
+#  - define for __cpluspus and extern C ?
+#  - fix ARM_MATH_CM0PLUS with define guard
+
 .PHONY: all clean patch distclean
 
 all: patch
@@ -25,6 +31,11 @@ $(CURDIR)/sdk/: $(CURDIR)/.extracted
 	mkdir -p $(CURDIR)/sdk/
 	# Copy sdk content to sdk folder
 	mv $(CURDIR)/.extracted/developer/sdks/gecko_sdk_suite/$(PKG_VERSION)/* $(CURDIR)/sdk/
+	# remove not needed stuff
+	rm -rf $(CURDIR)/sdk/util
+	rm -rf $(CURDIR)/sdk/meta
+	rm -rf $(CURDIR)/sdk/platform/Device/SiliconLabs/em3*
+	rm -rf $(CURDIR)/sdk/platform/Device/SiliconLabs/sky66107
 	rm -rf $(CURDIR)/.extracted/* 
 	# Here you apply your patch.
 #		cd $< && patch ../patch.txt
