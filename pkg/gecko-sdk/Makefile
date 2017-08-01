@@ -12,6 +12,7 @@ endif
 
 # todo
 # patch (from EFM2RIOT)
+# for sdk/Device/SiliconLabs/{family}/Include/*.h
 #  - define for __cpluspus and extern C ?
 #  - fix ARM_MATH_CM0PLUS with define guard
 
