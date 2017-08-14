@@ -1,10 +1,10 @@
 /**************************************************************************//**
  * @file efr32mg1p_gpcrc.h
  * @brief EFR32MG1P_GPCRC register and bit field definitions
- * @version 5.0.0
+ * @version 5.2.2
  ******************************************************************************
- * @section License
- * <b>Copyright 2016 Silicon Laboratories, Inc. http://www.silabs.com</b>
+ * # License
+ * <b>Copyright 2017 Silicon Laboratories, Inc. http://www.silabs.com</b>
  ******************************************************************************
  *
  * Permission is granted to anyone to use this software for any purpose,
@@ -29,9 +29,16 @@
  * any third party, arising from your use of this Software.
  *
  *****************************************************************************/
-
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+
+
+#if defined(__ICCARM__)
+#pragma system_include       /* Treat file as system include file. */
+#elif defined(__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050)
+#pragma clang system_header  /* Treat file as system include file. */
 #endif
 
 /**************************************************************************//**
@@ -39,10 +46,11 @@ extern "C" {
 * @{
 ******************************************************************************/
 /**************************************************************************//**
- * @defgroup EFR32MG1P_GPCRC
+ * @defgroup EFR32MG1P_GPCRC GPCRC
  * @{
  * @brief EFR32MG1P_GPCRC Register Declaration
  *****************************************************************************/
+/** GPCRC Register Declaration */
 typedef struct
 {
   __IOM uint32_t CTRL;           /**< Control Register  */
@@ -58,7 +66,9 @@ typedef struct
 } GPCRC_TypeDef;                 /** @} */
 
 /**************************************************************************//**
- * @defgroup EFR32MG1P_GPCRC_BitFields
+ * @addtogroup EFR32MG1P_GPCRC
+ * @{
+ * @defgroup EFR32MG1P_GPCRC_BitFields  GPCRC Bit Fields
  * @{
  *****************************************************************************/
 
@@ -185,6 +195,7 @@ typedef struct
 #define _GPCRC_DATABYTEREV_DATABYTEREV_DEFAULT          0x00000000UL                                  /**< Mode DEFAULT for GPCRC_DATABYTEREV */
 #define GPCRC_DATABYTEREV_DATABYTEREV_DEFAULT           (_GPCRC_DATABYTEREV_DATABYTEREV_DEFAULT << 0) /**< Shifted mode DEFAULT for GPCRC_DATABYTEREV */
 
+/** @} */
 /** @} End of group EFR32MG1P_GPCRC */
 /** @} End of group Parts */
 

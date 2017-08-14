@@ -1,10 +1,10 @@
 /**************************************************************************//**
  * @file efr32mg1p_i2c.h
  * @brief EFR32MG1P_I2C register and bit field definitions
- * @version 5.0.0
+ * @version 5.2.2
  ******************************************************************************
- * @section License
- * <b>Copyright 2016 Silicon Laboratories, Inc. http://www.silabs.com</b>
+ * # License
+ * <b>Copyright 2017 Silicon Laboratories, Inc. http://www.silabs.com</b>
  ******************************************************************************
  *
  * Permission is granted to anyone to use this software for any purpose,
@@ -29,9 +29,16 @@
  * any third party, arising from your use of this Software.
  *
  *****************************************************************************/
-
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+
+
+#if defined(__ICCARM__)
+#pragma system_include       /* Treat file as system include file. */
+#elif defined(__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050)
+#pragma clang system_header  /* Treat file as system include file. */
 #endif
 
 /**************************************************************************//**
@@ -39,10 +46,11 @@ extern "C" {
 * @{
 ******************************************************************************/
 /**************************************************************************//**
- * @defgroup EFR32MG1P_I2C
+ * @defgroup EFR32MG1P_I2C I2C
  * @{
  * @brief EFR32MG1P_I2C Register Declaration
  *****************************************************************************/
+/** I2C Register Declaration */
 typedef struct
 {
   __IOM uint32_t CTRL;      /**< Control Register  */
@@ -67,7 +75,9 @@ typedef struct
 } I2C_TypeDef;              /** @} */
 
 /**************************************************************************//**
- * @defgroup EFR32MG1P_I2C_BitFields
+ * @addtogroup EFR32MG1P_I2C
+ * @{
+ * @defgroup EFR32MG1P_I2C_BitFields  I2C Bit Fields
  * @{
  *****************************************************************************/
 
@@ -921,6 +931,7 @@ typedef struct
 #define I2C_ROUTELOC0_SCLLOC_LOC30         (_I2C_ROUTELOC0_SCLLOC_LOC30 << 8)   /**< Shifted mode LOC30 for I2C_ROUTELOC0 */
 #define I2C_ROUTELOC0_SCLLOC_LOC31         (_I2C_ROUTELOC0_SCLLOC_LOC31 << 8)   /**< Shifted mode LOC31 for I2C_ROUTELOC0 */
 
+/** @} */
 /** @} End of group EFR32MG1P_I2C */
 /** @} End of group Parts */
 

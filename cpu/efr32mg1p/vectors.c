@@ -38,7 +38,13 @@ WEAK_DEFAULT void isr_systick(void);
 
 /* Silicon Labs specific interrupt vector */
 WEAK_DEFAULT void isr_emu(void);
+WEAK_DEFAULT void FRC_PRI_IRQHandler(void);
 WEAK_DEFAULT void isr_wdog0(void);
+WEAK_DEFAULT void FRC_IRQHandler(void);
+WEAK_DEFAULT void MODEM_IRQHandler(void);
+WEAK_DEFAULT void RAC_SEQ_IRQHandler(void);
+WEAK_DEFAULT void RAC_RSM_IRQHandler(void);
+WEAK_DEFAULT void BUFC_IRQHandler(void);
 WEAK_DEFAULT void isr_ldma(void);
 WEAK_DEFAULT void isr_gpio_even(void);
 WEAK_DEFAULT void isr_timer0(void);
@@ -58,8 +64,12 @@ WEAK_DEFAULT void isr_cmu(void);
 WEAK_DEFAULT void isr_msc(void);
 WEAK_DEFAULT void isr_crypto(void);
 WEAK_DEFAULT void isr_letimer0(void);
+WEAK_DEFAULT void AGC_IRQHandler(void);
+WEAK_DEFAULT void PROTIMER_IRQHandler(void);
 WEAK_DEFAULT void isr_rtcc(void);
+WEAK_DEFAULT void SYNTH_IRQHandler(void);
 WEAK_DEFAULT void isr_cryotimer(void);
+WEAK_DEFAULT void RFSENSE_IRQHandler(void);
 WEAK_DEFAULT void isr_fpueh(void);
 
 /* interrupt vector table */
@@ -89,13 +99,13 @@ ISR_VECTORS const void *interrupt_vector[] = {
 
     /* EFM32 specific peripheral handlers */
     (void*) isr_emu,                /* 0 - EMU */
-    (void*) (0UL),                  /* Reserved */
+    (void*) FRC_PRI_IRQHandler,     /* 1 - FRC_PRI */
     (void*) isr_wdog0,              /* 2 - WDOG0 */
-    (void*) (0UL),                  /* Reserved */
-    (void*) (0UL),                  /* Reserved */
-    (void*) (0UL),                  /* Reserved */
-    (void*) (0UL),                  /* Reserved */
-    (void*) (0UL),                  /* Reserved */
+    (void*) FRC_IRQHandler,         /* 3 - FRC */
+    (void*) MODEM_IRQHandler,       /* 4 - MODEM */
+    (void*) RAC_SEQ_IRQHandler,     /* 5 - RAC_SEQ */
+    (void*) RAC_RSM_IRQHandler,     /* 6 - RAC_RSM */
+    (void*) BUFC_IRQHandler,        /* 7 - BUFC */
     (void*) isr_ldma,               /* 8 - LDMA */
     (void*) isr_gpio_even,          /* 9 - GPIO_EVEN */
     (void*) isr_timer0,             /* 10 - TIMER0 */
@@ -115,11 +125,11 @@ ISR_VECTORS const void *interrupt_vector[] = {
     (void*) isr_msc,                /* 24 - MSC */
     (void*) isr_crypto,             /* 25 - CRYPTO */
     (void*) isr_letimer0,           /* 26 - LETIMER0 */
-    (void*) (0UL),                  /* Reserved */
-    (void*) (0UL),                  /* Reserved */
+    (void*) AGC_IRQHandler,         /* 27 - AGC */
+    (void*) PROTIMER_IRQHandler,    /* 28 - PROTIMER */
     (void*) isr_rtcc,               /* 29 - RTCC */
-    (void*) (0UL),                  /* Reserved */
+    (void*) SYNTH_IRQHandler,       /* 30 - SYNTH */
     (void*) isr_cryotimer,          /* 31 - CRYOTIMER */
-    (void*) (0UL),                  /* Reserved */
+    (void*) RFSENSE_IRQHandler,     /* 32 - RFSENSE */
     (void*) isr_fpueh,              /* 33 - FPUEH */
 };

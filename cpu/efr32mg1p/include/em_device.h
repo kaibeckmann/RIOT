@@ -12,10 +12,10 @@
  *
  *
  * @endverbatim
- * @version 5.0.0
+ * @version 5.2.2
  ******************************************************************************
- * @section License
- * <b>Copyright 2016 Silicon Laboratories, Inc. http://www.silabs.com</b>
+ * # License
+ * <b>Copyright 2017 Silicon Laboratories, Inc. http://www.silabs.com</b>
  ******************************************************************************
  *
  * Permission is granted to anyone to use this software for any purpose,
@@ -40,10 +40,10 @@
  * any third party, arising from your use of this Software.
  *
  *****************************************************************************/
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 
 #ifndef EM_DEVICE_H
