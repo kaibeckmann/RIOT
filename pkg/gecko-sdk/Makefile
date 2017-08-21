@@ -9,6 +9,19 @@ ifneq ($(RIOTBASE),)
 include $(RIOTBASE)/Makefile.base
 endif
 
+ifeq ($(CPU),efr32mg1p)
+RAIL_LIB = $(RAIL_SDK_SRCDIR)/autogen/librail_release/librail_efr32xg1_gcc_release.a
+endif
+
+#BINARY_DIRS += $(RAIL_SDK_SRCDIR)/autogen/librail_release/
+
+ifeq ($(CPU),efr32mg12p)
+RAIL_LIB = $(RAIL_SDK_SRCDIR)/autogen/librail_release/librail_efr32xg12_gcc_release.a
+endif
+ifeq ($(CPU),efr32mg13p)
+RAIL_LIB = $(RAIL_SDK_SRCDIR)/autogen/librail_release/librail_efr32xg13_gcc_release.a
+endif
+
 
 # todo
 # patch (from EFM2RIOT)
@@ -19,15 +32,20 @@ endif
 .PHONY: all clean patch distclean
 
 all: patch
+	echo "foo"
 #	$(MAKE) -C $(CURDIR)/$(PKG_NAME)-$(PKG_VERSION)
 
-patch: $(CURDIR)/sdk/
+$(BINDIR)/gecko-sdk.a: | $(CURDIR)/sdk
+	cp $(RAIL_LIB) $@
+
+patch: |$(CURDIR)/sdk
+	echo "done"
 	# Dependancy might be changed accordingly though we think the Makefile
 	# will be the first thing you want to change
 	#
 	# Here might not happen anything besides dependancy checks
 
-$(CURDIR)/sdk/: $(CURDIR)/.extracted 
+$(CURDIR)/sdk: | $(CURDIR)/.extracted 
 	# Create sdk folder
 	mkdir -p $(CURDIR)/sdk/
 	# Copy sdk content to sdk folder
@@ -37,7 +55,7 @@ $(CURDIR)/sdk/: $(CURDIR)/.extracted
 	rm -rf $(CURDIR)/sdk/meta
 	rm -rf $(CURDIR)/sdk/platform/Device/SiliconLabs/em3*
 	rm -rf $(CURDIR)/sdk/platform/Device/SiliconLabs/sky66107
-	rm -rf $(CURDIR)/.extracted/* 
+	rm -rf $(CURDIR)/.extracted
 	# Here you apply your patch.
 #		cd $< && patch ../patch.txt
 
@@ -58,8 +76,8 @@ $(CURDIR)/$(PKG_NAME)-$(PKG_VERSION).$(PKG_EXT):
 
 clean::
 	# Reset package to checkout state.
-	rm -rf $(CURDIR)/$(PKG_NAME)-$(PKG_VERSION) $(CURDIR)/sdk $(CURDIR)/.extracted
 #	&& $(MAKE) $(CURDIR)/$(PKG_NAME)-$(PKG_VERSION)/Makefile
 
 distclean::
+	rm -rf $(CURDIR)/$(PKG_NAME)-$(PKG_VERSION) $(CURDIR)/sdk $(CURDIR)/.extracted
 	rm -rf $(CURDIR)/$(PKG_NAME)-$(PKG_VERSION) $(CURDIR)/$(PKG_NAME)-$(PKG_VERSION).$(PKG_EXT) $(CURDIR)/sdk $(CURDIR)/.extracted
