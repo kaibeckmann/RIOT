@@ -27,6 +27,7 @@ ifneq (,$(filter rail,$(USEMODULE)))
   USEMODULE += netif
   USEMODULE += ieee802154
   USEMODULE += netdev2_ieee802154
+  USEPKG 	+= gecko-sdk
   ifneq (,$(filter gnrc_netdev_default,$(USEMODULE)))
 	# XXX: this can be modelled as a dependency for gnrc_netdev_default as soon
 	# as all drivers are ported to netdev2
