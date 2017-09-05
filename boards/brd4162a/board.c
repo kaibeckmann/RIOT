@@ -63,10 +63,10 @@ void board_init(void)
 #endif
 
     /* enable the board controller, to enable virtual com port */
-#if BC_ENABLED
+//#if BC_ENABLED
     gpio_init(BC_PIN, GPIO_OUT);
     gpio_set(BC_PIN);
-#endif
+//#endif
 
     /* initialize the LEDs */
     gpio_init(LED0_PIN, GPIO_OUT);

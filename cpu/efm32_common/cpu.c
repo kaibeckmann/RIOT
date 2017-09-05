@@ -37,29 +37,74 @@
  */
 static void clk_init(void)
 {
+    
+    // init DCDC reg
+    //  have to be done before hf oscillaror enable!
+#ifdef EMU_DCDCINIT_WSTK_DEFAULT
+    EMU_DCDCInit_TypeDef dcdcInit = EMU_DCDCINIT_WSTK_DEFAULT;
+    EMU_DCDCInit(&dcdcInit);
+#else
+    EMU_DCDCPowerOff();
+#endif
+
+
+    /* if HF clock is external HFXO*/
+    /* from EFR32/hal-config.c gecko-sdk*/
+#if (SILABS_CLOCK_SELECT(CLOCK_HF) == SILABS_CLOCK_SELECT(HFXO))
+    CMU_HFXOInit_TypeDef hfxoInit = CMU_HFXOINIT_WSTK_DEFAULT;
+    // init HFXO clock
+    CMU_HFXOInit(&hfxoInit);
+    
+    /* Setting system HFXO frequency */
+    SystemHFXOClockSet(CLOCK_HFXO_FREQ);
+    
+    /* Enable HFXO oscillator, and wait for it to be stable */
+    CMU_OscillatorEnable(SILABS_CLOCK_OSCILLATOR(CLOCK_HF), true, true);
+#endif
+
     /* set the HF clock source */
-    CMU_ClockSelectSet(cmuClock_HF, CLOCK_HF);
+    CMU_ClockSelectSet(cmuClock_HF, SILABS_CLOCK_SELECT(CLOCK_HF));
+    
     CMU_ClockDivSet(cmuClock_CORE, CLOCK_CORE_DIV);
 
     /* disable the HFRCO if external crystal is used */
-    if (CLOCK_HF == cmuSelect_HFXO) {
-        CMU_OscillatorEnable(cmuOsc_HFRCO, false, false);
-    }
+#if (SILABS_CLOCK_SELECT(CLOCK_HF) == SILABS_CLOCK_SELECT(HFXO))
+    CMU_OscillatorEnable(cmuOsc_HFRCO, false, false);
+#endif
+    
+    /* init LFXo if configured */
+#if (SILABS_CLOCK_SELECT(CLOCK_LFA) == SILABS_CLOCK_SELECT(LFXO))
+    #ifdef CLOCK_LFXO_INIT
+    CMU_LFXOInit_TypeDef lfxoInit = CLOCK_LFXO_INIT;
+    CMU_LFXOInit(&lfxoInit);
+    #endif
+    
+    /* Setting system LFXO frequency */
+    SystemLFXOClockSet(CLOCK_LFXO_FREQ);
+#endif
+
+    /* Enable oscillator, and wait for it to be stable */
+    CMU_OscillatorEnable(SILABS_CLOCK_OSCILLATOR(CLOCK_LFA), true, true);
+    CMU_OscillatorEnable(SILABS_CLOCK_OSCILLATOR(CLOCK_LFB), true, true);
 
     /* set the LFA clock source */
-    CMU_ClockSelectSet(cmuClock_LFA, CLOCK_LFA);
+    CMU_ClockSelectSet(cmuClock_LFA, SILABS_CLOCK_SELECT(CLOCK_LFA));
 
     /* set the LFB clock source */
-    CMU_ClockSelectSet(cmuClock_LFB, CLOCK_LFB);
+    CMU_ClockSelectSet(cmuClock_LFB, SILABS_CLOCK_SELECT(CLOCK_LFB));
 
     /* set the LFE clock source */
 #ifdef _SILICON_LABS_32B_PLATFORM_2
-    CMU_ClockSelectSet(cmuClock_LFE, CLOCK_LFE);
+    CMU_ClockEnable(cmuClock_CORELE, true);
+    CMU_ClockSelectSet(cmuClock_LFE, SILABS_CLOCK_SELECT(CLOCK_LFE));
 #endif
 }
 
 static void pm_init(void)
 {
+    
+
+    
     /* initialize EM2 and EM3 */
     EMU_EM23Init_TypeDef init_em23 = EMU_EM23INIT_DEFAULT;
 

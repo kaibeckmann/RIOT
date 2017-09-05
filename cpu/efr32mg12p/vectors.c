@@ -41,6 +41,7 @@ WEAK_DEFAULT void isr_emu(void);
 WEAK_DEFAULT void FRC_PRI_IRQHandler(void);
 WEAK_DEFAULT void isr_wdog0(void);
 WEAK_DEFAULT void isr_wdog1(void);
+WEAK_DEFAULT void FRC_IRQHandler(void);
 WEAK_DEFAULT void MODEM_IRQHandler(void);
 WEAK_DEFAULT void RAC_SEQ_IRQHandler(void);
 WEAK_DEFAULT void RAC_RSM_IRQHandler(void);
@@ -64,7 +65,10 @@ WEAK_DEFAULT void isr_cmu(void);
 WEAK_DEFAULT void isr_msc(void);
 WEAK_DEFAULT void isr_crypto0(void);
 WEAK_DEFAULT void isr_letimer0(void);
+WEAK_DEFAULT void AGC_IRQHandler(void);
 WEAK_DEFAULT void PROTIMER_IRQHandler(void);
+WEAK_DEFAULT void SYNTH_IRQHandler(void);
+WEAK_DEFAULT void RFSENSE_IRQHandler(void);
 WEAK_DEFAULT void isr_rtcc(void);
 WEAK_DEFAULT void isr_cryotimer(void);
 WEAK_DEFAULT void isr_fpueh(void);
@@ -108,17 +112,16 @@ ISR_VECTORS const void *interrupt_vector[] = {
     (void*) isr_pendsv,             /* pendSV interrupt, in RIOT the actual
                                      * context switching is happening here */
     (void*) isr_systick,            /* SysTick interrupt, not used in RIOT */
-
     /* EFM32 specific peripheral handlers */
     (void*) isr_emu,                /* 0 - EMU */
     (void*) FRC_PRI_IRQHandler,     /* 1 - FRC_PRI */
     (void*) isr_wdog0,              /* 2 - WDOG0 */
     (void*) isr_wdog1,              /* 3 - WDOG1 */
-    (void*) MODEM_IRQHandler,       /* 4 - MODEM */
-    (void*) RAC_SEQ_IRQHandler,     /* 5 - RAC_SEQ */
-    (void*) RAC_RSM_IRQHandler,     /* 6 - RAC_RSM */
-    (void*) BUFC_IRQHandler,        /* 7 - BUFC */
-    (void*) (0UL),                  /* Reserved */
+    (void*) FRC_IRQHandler,         /* 4 - FRC */
+    (void*) MODEM_IRQHandler,        /* 5 - MODEM */
+    (void*) RAC_SEQ_IRQHandler,     /* 6 - RAC_SEQ */
+    (void*) RAC_RSM_IRQHandler,     /* 7 - RAC_RSM */
+    (void*) BUFC_IRQHandler,        /* 8 - BUFC */
     (void*) isr_ldma,               /* 9 - LDMA */
     (void*) isr_gpio_even,          /* 10 - GPIO_EVEN */
     (void*) isr_timer0,             /* 11 - TIMER0 */
@@ -138,12 +141,12 @@ ISR_VECTORS const void *interrupt_vector[] = {
     (void*) isr_msc,                /* 25 - MSC */
     (void*) isr_crypto0,            /* 26 - CRYPTO0 */
     (void*) isr_letimer0,           /* 27 - LETIMER0 */
-    (void*) PROTIMER_IRQHandler,    /* 28 - PROTIMER */
-    (void*) (0UL),                  /* Reserved */
+    (void*) AGC_IRQHandler,         /* 28 - AGC */
+    (void*) PROTIMER_IRQHandler,    /* 29 - PROTIMER */
     (void*) isr_rtcc,               /* 30 - RTCC */
-    (void*) (0UL),                  /* Reserved */
+    (void*) SYNTH_IRQHandler,       /* 31 - SYNTH */
     (void*) isr_cryotimer,          /* 32 - CRYOTIMER */
-    (void*) (0UL),                  /* Reserved */
+    (void*) RFSENSE_IRQHandler,     /* 33 - RFSENSE */
     (void*) isr_fpueh,              /* 34 - FPUEH */
     (void*) isr_smu,                /* 35 - SMU */
     (void*) isr_wtimer0,            /* 36 - WTIMER0 */

@@ -46,9 +46,11 @@ extern "C" {
  * @brief   Define for enabling Advanced Energy Monitor core output via SWO.
  * @{
  */
+/*
 #ifndef AEM_ENABLED
 #define AEM_ENABLED                 (1)
 #endif
+* */
 /** @} */
 
 /**
@@ -58,18 +60,25 @@ extern "C" {
 #ifndef BC_ENABLED
 #define BC_ENABLED                  (1)
 #endif
+
+#define BC_PIN              GPIO_PIN(PA, 5)
 /** @} */
 
 /**
  * @brief   Push button pin definitions.
  * @{
  */
+ 
+#define PB0_PIN             GPIO_PIN(PF, 6)
+#define PB1_PIN             GPIO_PIN(PF, 7)
 /** @} */
 
 /**
  * @brief    LED pin definitions.
  * @{
  */
+#define LED0_PIN            GPIO_PIN(PF, 4)
+#define LED1_PIN            GPIO_PIN(PF, 5)
 /** @} */
 
 /**
