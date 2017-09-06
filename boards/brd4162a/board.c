@@ -26,13 +26,8 @@
 #include "em_dbg.h"
 #include "em_gpio.h"
 
-void board_init(void)
-{
-    /* initialize the CPU */
-    cpu_init();
 
-    /* enable core debug output AEM */
-#if AEM_ENABLED
+void aem_init(void) {
     if (DBG_Connected()) {
         /* enable GPIO clock for configuring SWO pins */
         CMU_ClockEnable(cmuClock_GPIO, true);
@@ -60,13 +55,24 @@ void board_init(void)
         ITM->LAR = 0xC5ACCE55;
         ITM->TCR = 0x10009;
     }
+}
+
+
+void board_init(void)
+{
+    /* initialize the CPU */
+    cpu_init();
+
+    /* enable core debug output AEM */
+#if AEM_ENABLED
+    aem_init();
 #endif
 
     /* enable the board controller, to enable virtual com port */
-//#if BC_ENABLED
+#if BC_ENABLED
     gpio_init(BC_PIN, GPIO_OUT);
     gpio_set(BC_PIN);
-//#endif
+#endif
 
     /* initialize the LEDs */
     gpio_init(LED0_PIN, GPIO_OUT);
