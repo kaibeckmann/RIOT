@@ -9,6 +9,8 @@ ifneq ($(RIOTBASE),)
 include $(RIOTBASE)/Makefile.base
 endif
 
+RAIL_SDK_SRCDIR = $(CURDIR)/sdk/platform/radio/rail_lib
+
 ifeq ($(CPU),efr32mg1p)
 RAIL_LIB = $(RAIL_SDK_SRCDIR)/autogen/librail_release/librail_efr32xg1_gcc_release.a
 endif
