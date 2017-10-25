@@ -28,6 +28,11 @@
 #include "periph/gpio.h"
 #include "periph/spi.h"
 
+#include "radio.h"
+
+// RAIL api
+#include "rail.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -92,6 +97,7 @@ extern "C" {
 #define LED1_OFF            gpio_clear(LED1_PIN)
 #define LED1_TOGGLE         gpio_toggle(LED1_PIN)
 /** @} */
+
 
 /**
  * @brief   Initialize the board (GPIO, sensors, clocks).

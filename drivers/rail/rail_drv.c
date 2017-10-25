@@ -3,12 +3,17 @@
 #include <inttypes.h>
 #include <assert.h>
 
+#include "radio.h"
+
+// gecko sdk rail lib includes
 #include "em_core.h"
 #include "rail.h"
+#include "pti.h"
+#include "pa.h"
 #include "rail_assert_error_codes.h"
-
 #include "ieee802154/rail_ieee802154.h"
 
+// riot os rail driver includes
 #include "rail_drv.h"
 #include "rail_registers.h"
 #include "rail_internal.h"
@@ -26,7 +31,7 @@
 //static uint8_t _receiveBuffer[IEEE802154_FRAME_LEN_MAX + 1 + sizeof(RAIL_RxPacketInfo_t)];
 static bool _receiveBufferIsAllocated = false;
 
-static bool _rfReady = false;
+static volatile bool _rfReady = false;
 
 void rail_setup(rail_t* dev, const rail_params_t* params)
 {
@@ -49,11 +54,54 @@ void rail_setup(rail_t* dev, const rail_params_t* params)
     rail_internal_init_radio_hal(params);
     
     //// init radio
+  //  RAIL_RfIdle();
+  //  dev->state = RAIL_TRANSCEIVER_STATE_IDLE;
+    
+    
+}
+
+int initPTI(rail_t* dev) {
+
+    // init gpio for output
+
+    RADIO_PTIInit_t ptiInit = RADIO_PTI_INIT;
+    RADIO_PTI_Init(&ptiInit);
+    DEBUG("RADIO_PTI_Init done\n");
+
+    return 0;
+}
+
+int rail_init(rail_t* dev)
+{
+    DEBUG("rail_init called\n");
+    // c&p from openthread
+    
+    // PTI init
+#if (PTI_ENABLED)
+    initPTI(dev);
+#endif
+
+    // PA init
+    RADIO_PAInit_t paInit = (RADIO_PAInit_t) RADIO_PA_2P4_INIT;
+    if (!RADIO_PA_Init(&paInit)) {
+        // Error: The PA could not be initialized due to an improper 
+        // configuration.
+        // Please ensure your configuration is valid for the selected part.
+        LOG_ERROR("Can't init rail radio PM\n");
+        assert(false);
+    }
+    DEBUG("RADIO_PA_Init done\n");
+    
+    // radio debug?
+    // TODO radio debug
+     
+
+    // RfInit
     RAIL_Init_t railInitParams =
     {
         128, // maxPacketLength: UNUSED
-        params->XTAL_frequency,
-        0
+        CLOCK_HFXO_FREQ,   // frequency of the external crystal
+        0    // calEnable  mask defines cal to perfom in RAIL
     };
     
     uint8_t ret ;
@@ -61,24 +109,47 @@ void rail_setup(rail_t* dev, const rail_params_t* params)
     
     if (ret != 0) {
         LOG_ERROR("Can not init RAIL radio: error code: %u\n", ret);
-        return;
+        return -1;
     }
     // wait till rf is ready
     while (_rfReady == false);
-  //  RAIL_RfIdle();
-  //  dev->state = RAIL_TRANSCEIVER_STATE_IDLE;
-    
-    
-}
+
+    // CalInit calibrate the radio transceiver
+    // TODO
+
+    RAIL_Status_t r;
+    // 802.15.4 RadioConfig
+    // if 2.4 GHz
+    r = RAIL_IEEE802154_2p4GHzRadioConfig();
+    if (r != RAIL_STATUS_NO_ERROR){
+        assert(false);
+    }
+    // 802 init
+    RAIL_IEEE802154_Config_t config = { false,  // promiscuousMode
+                                        false,  // isPanCoordinator
+                                        RAIL_IEEE802154_ACCEPT_STANDARD_FRAMES, // framesMask, which frame will be received
+                                        RAIL_RF_STATE_RX, // defaultState, state after transmitt
+                                        100,   // idleTime time to go from idle to RX or TX
+                                        192,   // turnaroundTime time after receiving a packet and transmitting an ack
+                                        894,   // ackTimeout
+                                        NULL   // addresses, address filter, to allow only the given addresses
+                                       };
+    r = RAIL_IEEE802154_Init(&config);
+    if (r != RAIL_STATUS_NO_ERROR) {
+        assert(false);
+    }
+    // if pan coord
+    // setpancoord
+    // get mac addr
+    memcpy(dev->mac_address, (const void*)&DEVINFO->UNIQUEH, 4);
+    memcpy(dev->mac_address+4, (const void*)&DEVINFO->UNIQUEL, 4);
+    // set panid
+    // set short addr
+    // set long addr
+    // txpowerset
 
 
-
-int rail_init(rail_t* dev)
-{
-    DEBUG("rail_init called\n");
-    // c&p from openthread
-    
-    // Data Management
+    // Data Management allready the default
     RAIL_DataConfig_t railDataConfig =
     {
         TX_PACKET_DATA,
@@ -87,31 +158,13 @@ int rail_init(rail_t* dev)
         PACKET_MODE,
     };
 
-    RAIL_DataConfig(&railDataConfig);
+    
+    r = RAIL_DataConfig(&railDataConfig);
+    if (r != RAIL_STATUS_NO_ERROR) {
+        assert(false);
+    }
     
         // 802.15.4 configuration
-    RAIL_IEEE802154_Config_t config =
-    {
-        false,                                   // promiscuousMode
-        false,                                   // isPanCoordinator
-        RAIL_IEEE802154_ACCEPT_STANDARD_FRAMES,  // framesMask
-        RAIL_RF_STATE_RX,                        // defaultState
-        100,                                     // idleTime
-        192,                                     // turnaroundTime
-        894,                                     // ackTimeout
-        NULL                                     // addresses
-    };
-    
-    dev->promiscuousMode = false;
-    
-    if (RAIL_IEEE802154_2p4GHzRadioConfig())
-    {
-        assert(false);
-    }
-    if (RAIL_IEEE802154_Init(&config))
-    {
-        assert(false);
-    }
     
     RAIL_TxPowerSet(dev->params.max_transit_power);
     

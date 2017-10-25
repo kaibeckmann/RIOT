@@ -16,7 +16,7 @@
 #include "rail_params.h"
 
 #define RAIL_MAC_STACKSIZE      (THREAD_STACKSIZE_DEFAULT)
-#ifndef RAIL_MACH_PRIO
+#ifndef RAIL_MAC_PRIO
 #define RAIL_MAC_PRIO           (GNRC_NETDEV2_MAC_PRIO)
 #endif
 

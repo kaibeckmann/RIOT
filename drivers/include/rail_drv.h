@@ -44,6 +44,9 @@ typedef struct {
     uint8_t state;              // state of radio
     bool promiscuousMode;
     uint16_t channel;
+    uint8_t mac_address[8];
+    uint16_t pan_address;
+    uint16_t short_address;
 } rail_t;
 
 
