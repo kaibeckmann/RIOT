@@ -199,8 +199,21 @@ static const pwm_conf_t pwm_config[] = {
  * @{
  */
 static const spi_dev_t spi_config[] = {
+    {
+USART1,                             /*  device */
+GPIO_PIN(PC, 6),                    /*  MOSI pin */
+GPIO_PIN(PC, 7),                    /*  MISO pin */
+GPIO_PIN(PC, 8),                    /*  CLK pin */
+USART_ROUTELOC0_RXLOC_LOC11 |
+USART_ROUTELOC0_TXLOC_LOC11 |
+USART_ROUTELOC0_CLKLOC_LOC11,   /*  AF location */
+cmuClock_USART1,                    /*  CMU register */
+USART1_RX_IRQn                      /*  IRQ base channel */
+     }
 };
-#define SPI_NUMOF           (0U)
+#define SPI_NUMOF           (1U)
+
+#define SPI_0_EN            (1U)
 
 /** @} */
 
