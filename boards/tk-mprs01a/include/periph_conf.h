@@ -13,9 +13,9 @@
  * @file
  * @brief       Configuration of CPU peripherals for Thermokon mprs01 model a
  *
+ * @author      Kai Beckmann <kai.beckmann@hs-rm.de>
  * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
  * @author      Bas Stottelaar <basstottelaar@gmail.com>
- * @author      Kai Beckmann <kai.beckmann@hs-rm.de>
  */
 
 #ifndef PERIPH_CONF_H
@@ -62,46 +62,45 @@ extern "C" {
 /** @} */
 
 #define CLOCK_HFXO_INIT                                                  \
-      {                                                                        \
-              false,      /*  Low-noise mode for EFR32 */                             \
-             false,      /*  Disable auto-start on EM0/1 entry */                    \
-             false,      /*  Disable auto-select on EM0/1 entry */                   \
-             false,      /*  Disable auto-start and select on RAC wakeup */          \
-             _CMU_HFXOSTARTUPCTRL_CTUNE_DEFAULT,                                    \
-             0x142,      /*  Steady-state CTUNE for WSTK boards without load caps */ \
-             _CMU_HFXOSTEADYSTATECTRL_REGISH_DEFAULT,                               \
-             0x20,       /*  Matching errata fix in CHIP_Init() */                   \
-             0x7,        /*  Recommended steady-state osc core bias current */       \
-             0x6,        /*  Recommended peak detection threshold */                 \
-             _CMU_HFXOTIMEOUTCTRL_SHUNTOPTTIMEOUT_DEFAULT,                          \
-             0xA,        /*  Recommended peak detection timeout  */                  \
-             0x4,        /*  Recommended steady timeout */                           \
-             _CMU_HFXOTIMEOUTCTRL_STARTUPTIMEOUT_DEFAULT,                           \
-             cmuOscMode_Crystal,                                                    \
-        } 
-
+  {                                                                        \
+    false,      /* Low-noise mode for EFR32 */                             \
+    false,      /* Disable auto-start on EM0/1 entry */                    \
+    false,      /* Disable auto-select on EM0/1 entry */                   \
+    false,      /* Disable auto-start and select on RAC wakeup */          \
+    _CMU_HFXOSTARTUPCTRL_CTUNE_DEFAULT,                                    \
+    0x142,      /* Steady-state CTUNE for WSTK boards without load caps */ \
+    _CMU_HFXOSTEADYSTATECTRL_REGISH_DEFAULT,                               \
+    0x20,       /* Matching errata fix in CHIP_Init() */                   \
+    0x7,        /* Recommended steady-state osc core bias current */       \
+    0x6,        /* Recommended peak detection threshold */                 \
+    _CMU_HFXOTIMEOUTCTRL_SHUNTOPTTIMEOUT_DEFAULT,                          \
+    0xA,        /* Recommended peak detection timeout  */                  \
+    0x4,        /* Recommended steady timeout */                           \
+    _CMU_HFXOTIMEOUTCTRL_STARTUPTIMEOUT_DEFAULT,                           \
+    cmuOscMode_Crystal,                                                    \
+  }
 
 #if !defined(CMU_HFXOINIT_WSTK_DEFAULT)
 #define CMU_HFXOINIT_WSTK_DEFAULT                                          \
-      {                                                                        \
-              false,      /*  Low-noise mode for EFR32 */                             \
-             false,      /*  Disable auto-start on EM0/1 entry */                    \
-             false,      /*  Disable auto-select on EM0/1 entry */                   \
-             false,      /*  Disable auto-start and select on RAC wakeup */          \
-             _CMU_HFXOSTARTUPCTRL_CTUNE_DEFAULT,                                    \
-             0x142,      /*  Steady-state CTUNE for WSTK boards without load caps */ \
-             _CMU_HFXOSTEADYSTATECTRL_REGISH_DEFAULT,                               \
-             _CMU_HFXOSTARTUPCTRL_IBTRIMXOCORE_DEFAULT,                             \
-             0x7,        /*  Recommended steady-state osc core bias current */       \
-             0x6,        /*  Recommended peak detection threshold */                 \
-             _CMU_HFXOTIMEOUTCTRL_SHUNTOPTTIMEOUT_DEFAULT,                          \
-             0xA,        /*  Recommended peak detection timeout  */                  \
-             0x4,        /*  Recommended steady timeout */                           \
-             _CMU_HFXOTIMEOUTCTRL_STARTUPTIMEOUT_DEFAULT,                           \
-             cmuOscMode_Crystal,                                                    \
-           }
+  {                                                                        \
+    false,      /* Low-noise mode for EFR32 */                             \
+    false,      /* Disable auto-start on EM0/1 entry */                    \
+    false,      /* Disable auto-select on EM0/1 entry */                   \
+    false,      /* Disable auto-start and select on RAC wakeup */          \
+    _CMU_HFXOSTARTUPCTRL_CTUNE_DEFAULT,                                    \
+    0x142,      /* Steady-state CTUNE for WSTK boards without load caps */ \
+    _CMU_HFXOSTEADYSTATECTRL_REGISH_DEFAULT,                               \
+    _CMU_HFXOSTARTUPCTRL_IBTRIMXOCORE_DEFAULT,                             \
+    0x7,        /* Recommended steady-state osc core bias current */       \
+    0x6,        /* Recommended peak detection threshold */                 \
+    _CMU_HFXOTIMEOUTCTRL_SHUNTOPTTIMEOUT_DEFAULT,                          \
+    0xA,        /* Recommended peak detection timeout  */                  \
+    0x4,        /* Recommended steady timeout */                           \
+    _CMU_HFXOTIMEOUTCTRL_STARTUPTIMEOUT_DEFAULT,                           \
+    cmuOscMode_Crystal,                                                    \
+  }
 #endif
-   
+
 #if !defined(EMU_DCDCINIT_WSTK_DEFAULT)
    /*  Use emlib defaults */
 #define EMU_DCDCINIT_WSTK_DEFAULT EMU_DCDCINIT_DEFAULT

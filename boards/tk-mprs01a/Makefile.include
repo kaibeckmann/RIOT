@@ -1,4 +1,4 @@
-# define the cpu used by SLTB001A
+# define the cpu used by TK-MPRS01a
 export CPU = efr32mg1p
 export CPU_MODEL = efr32mg1p233f256gm48
 
