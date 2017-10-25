@@ -13,6 +13,7 @@
  * @file
  * @brief       Board specific configuration of direct mapped GPIOs
  *
+ * @author      Kai Beckmann <kai.beckmann@hs-rm.de>
  * @author      Bas Stottelaar <basstottelaar@gmail.com>
  */
 

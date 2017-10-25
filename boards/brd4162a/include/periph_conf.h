@@ -13,6 +13,7 @@
  * @file
  * @brief       Configuration of CPU peripherals for the BRD4162A starter kit
  *
+ * @author      Kai Beckmann <kai.beckmann@hs-rm.de>
  * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
  * @author      Bas Stottelaar <basstottelaar@gmail.com>
  */
@@ -103,8 +104,6 @@ extern "C" {
 /* Use emlib defaults */
 #define EMU_DCDCINIT_WSTK_DEFAULT EMU_DCDCINIT_DEFAULT
 #endif
-
-
 
 #define CLOCK_HFXO_FREQ 38400000UL
 #define CLOCK_LFXO_FREQ 32768UL

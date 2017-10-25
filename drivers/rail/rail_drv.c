@@ -77,7 +77,7 @@ int rail_init(rail_t* dev)
     // c&p from openthread
     
     // PTI init
-#if (PTI_ENABLED)
+#if (PTI_ENABLED == 1)
     initPTI(dev);
 #endif
 

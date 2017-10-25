@@ -13,6 +13,7 @@
  * @file
  * @brief       Board specific implementations BRD4162A board
  *
+ * @author      Kai Beckmann <kai.beckmann@hs-rm.de> 
  * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
  * @author      Bas Stottelaar <basstottelaar@gmail.com>
  *

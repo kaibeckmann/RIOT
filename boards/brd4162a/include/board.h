@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Freie Universität Berlin
+ * Copyright (C) 2017 Hochschule RheinMain
  *
  * This file is subject to the terms and conditions of the GNU Lesser
  * General Public License v2.1. See the file LICENSE in the top level
@@ -15,6 +15,8 @@
  * @file
  * @brief       Board specific definitions for the BRD4162A starter kit
  *
+ *
+ * @author      Kai Beckmann <kai.beckmann@hs-rm.de>
  * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
  * @author      Bas Stottelaar <basstottelaar@gmail.com>
  */

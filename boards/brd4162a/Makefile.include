@@ -6,6 +6,9 @@ export CPU_MODEL = efr32mg12p332f1024gl125
 PORT_LINUX ?= /dev/ttyACM0
 PORT_DARWIN ?= $(shell ls -1 /dev/tty.usbmodem* | head -n 1)
 
+# flags for the Energy Profiler
+#CFLAGS_DBG  ?= -gdwarf-2 -g3
+
 # setup JLink for flashing
 export JLINK_DEVICE := $(CPU_MODEL)
 include $(RIOTBOARD)/Makefile.include.jlink
