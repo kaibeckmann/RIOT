@@ -31,12 +31,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// posible values, 2400, 868, 915
+#define RAIL_RADIO_BAND 2400
+
+
 // Packet Trace interface
 #ifndef PTI_ENABLED
 #define PTI_ENABLED     (1)
 #endif
-
-
 
 // c&p from gecko-sdk BSP for EFR32MG1_BRD4154A
 #if !defined(RADIO_PTI_INIT)
@@ -55,19 +58,6 @@ extern "C" {
     13,                     /* Get the pin, location should match above */ \
   }
 #endif
-
-// c&p from gecko-sdk BSP for EFR32MG1_BRD4154A
-#if !defined(RADIO_PA_2P4_INIT)
-#define RADIO_PA_2P4_INIT                                    \
-  {                                                          \
-    PA_SEL_2P4_HP,    /* Power Amplifier mode */             \
-    PA_VOLTMODE_DCDC, /* Power Amplifier vPA Voltage mode */ \
-    100,              /* Desired output power in dBm * 10 */ \
-    0,                /* Output power offset in dBm * 10 */  \
-    10,               /* Desired ramp time in us */          \
-  }
-#endif
-
 
 
 #ifdef __cplusplus
