@@ -37,6 +37,10 @@ static int _set(netdev2_t* netdev, netopt_t opt, void* val, size_t len);
 
 
 static  uint8_t frame[IEEE802154_FRAME_LEN_MAX + 1];
+
+
+static const RAIL_CsmaConfig_t csmaConfig = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
+
 // local helper functions
 netopt_state_t _get_state(rail_t* dev);
 
@@ -73,7 +77,15 @@ static int _init(netdev2_t* netdev) {
     foo =foo;
     
     DEBUG("rail_netdev->init called\n");
-    
+     // set default channel
+#if (RAIL_RADIO_BAND == 2400)
+    dev->netdev.chan = IEEE802154_DEFAULT_CHANNEL;
+#elif (RAIL_RADIO_BAND == 868)
+    dev->netdev.chan = 0;
+#elif (RAIL_RADIO_BAND == 915)
+    dev->netdev.chan = 1;
+#endif
+   
     int ret;
     
     ret = rail_init(dev);
@@ -82,12 +94,11 @@ static int _init(netdev2_t* netdev) {
         return ret;
     }
 
-    // set default channel
-#ifdef IEEE802154_DEFAULT_CHANNEL
-    dev->channel = IEEE802154_DEFAULT_CHANNEL;
-#else
-    dev->channel = 26;
-#endif
+    ret = rail_start_rx(dev);
+    if (ret < 0) {
+        return ret;
+    }
+//    RAIL_TRANSCEIVER_STATE_TX
     
     
     
@@ -102,6 +113,14 @@ static int _send(netdev2_t* netdev, const struct iovec* vector, unsigned count)
     rail_t* dev = (rail_t*) netdev;
     
 
+    // todo check current state, make it depend what to do
+    // if tx, return error
+    // if init or so return error
+    // if calibaration error
+    // if idle or rx, send
+    //      if waiting for ack
+    //        no timeout return error
+    //        timeout update stat and continue
     
     // prepare frame, cpy header and payload
     size_t len = 1; // start with 1, first byte have to be the length
@@ -183,9 +202,8 @@ static int _send(netdev2_t* netdev, const struct iovec* vector, unsigned count)
         LOG_ERROR("Can't load data to tx frame\n");
         return -1;
     }
-    DEBUG("RX Data loaded\n");
+    DEBUG("TX Data loaded\n");
     
-    RAIL_CsmaConfig_t csmaConfig = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
    
     (void)txOption;
     (void)csmaConfig;
@@ -195,13 +213,13 @@ static int _send(netdev2_t* netdev, const struct iovec* vector, unsigned count)
    // r_ret =  RAIL_TxStart(dev->channel, NULL, NULL);
     
     
-    r_ret = RAIL_TxStartWithOptions(dev->channel, // channel to transmit on
+    r_ret = RAIL_TxStartWithOptions(0, //dev->netdev.chan, // channel to transmit on
                                     &txOption,      // option for transmit
                                     RAIL_CcaCsma,   // function to call before transmitting -> use csma
-                                    &csmaConfig);    // csma std config for 802.15.4
+                                    (void*) &csmaConfig);    // csma std config for 802.15.4
     
     if (r_ret != RAIL_STATUS_NO_ERROR) {
-        LOG_ERROR("Can't start transmit\n");
+        LOG_ERROR("Can't start transmit error code %u \n", r_ret);
         return -1;
     }
     DEBUG("Started transmit\n");
@@ -210,6 +228,7 @@ static int _send(netdev2_t* netdev, const struct iovec* vector, unsigned count)
   //  xtimer_spin(tt);
    // DEBUG("sleep transmit\n");
     
+    // TODO symetric blocking call. should be stated by callback
     while (RAIL_RfStateGet() == RAIL_RF_STATE_TX);
   //  CORE_EXIT_CRITICAL();
  //   ps();
@@ -248,8 +267,10 @@ static int _get(netdev2_t* netdev, netopt_t opt, void* val, size_t max_len)
     
     switch (opt) {
         case (NETOPT_PROTO): // layer 2
+            DEBUG("get NETOPT_PROTO\n");
             break;
         case (NETOPT_IPV6_IID): // layer 2
+            DEBUG("get NETOPT_IPV6_IID\n");
             break;
         case (NETOPT_MAX_PACKET_SIZE):
             assert(max_len >= sizeof(int16_t));
@@ -261,8 +282,10 @@ static int _get(netdev2_t* netdev, netopt_t opt, void* val, size_t max_len)
             ret = 0;
             break;
         case (NETOPT_ADDRESS):
+            DEBUG("get NETOPT_ADDRESS\n");
             break;
         case (NETOPT_CHANNEL):
+            DEBUG("get NETOPT_CHANNEL\n");
             break;
         case (NETOPT_CHANNEL_PAGE): // todo check if there is really nothing like a channel page?
             return -ENOTSUP;
@@ -273,8 +296,10 @@ static int _get(netdev2_t* netdev, netopt_t opt, void* val, size_t max_len)
             return sizeof(netopt_state_t);
             break;
         case (NETOPT_NID):
+            DEBUG("get NETOPT_NID\n");
             break;
         case (NETOPT_ADDRESS_LONG):
+            DEBUG("get NETOPT_ADDRESS_LONG\n");
             break;
         case (NETOPT_TX_POWER):     //
             assert(max_len >= sizeof(int16_t));
@@ -285,6 +310,7 @@ static int _get(netdev2_t* netdev, netopt_t opt, void* val, size_t max_len)
             ret = sizeof(uint16_t);
             break;
         case (NETOPT_RETRANS):      // todo
+            DEBUG("get NETOPT_RETRANS\n");
         
             break;
         case (NETOPT_PROMISCUOUSMODE): 
@@ -305,24 +331,29 @@ static int _get(netdev2_t* netdev, netopt_t opt, void* val, size_t max_len)
             ret = sizeof(netopt_enable_t);
             break;
         case (NETOPT_ACK_REQ):
+            DEBUG("get NETOPT_ACK_REQ\n");
             break;
         case (NETOPT_PRELOADING):   // todo what does it do??
             ret = -ENOTSUP;
             break;
         case (NETOPT_RAWMODE):
+            DEBUG("get NETOPT_RAWMODE\n");
             break;
         case (NETOPT_CSMA):         // todo can it be switched on / off?
             *((netopt_enable_t *)val) = NETOPT_ENABLE;
             ret = sizeof(netopt_enable_t);
             break;
         case (NETOPT_CSMA_RETRIES):
+            DEBUG("get NETOPT_CSMA_RETRIES\n");
             break;
         case (NETOPT_AUTOCCA):
+            DEBUG("get NETOPT_AUTOCCA\n");
             break;
         case (NETOPT_SRC_LEN):
+            DEBUG("get NETOPT_SRC_LEN\n");
             break;
         default:
-         //   DEBUG("not supported netopt code at rail drv %d str %s \n", opt, netopt2str(opt));
+            DEBUG("not supported netopt code at rail drv %d str %s \n", opt, netopt2str(opt));
             break;
     }
     if (ret != -ENOTSUP) {
@@ -346,6 +377,7 @@ static int _get(netdev2_t* netdev, netopt_t opt, void* val, size_t max_len)
 static int _set(netdev2_t* netdev, netopt_t opt, void* val, size_t len)
 {
     DEBUG("rail_netdev->set called opt %s \n", netopt2str(opt));
+    // bei channel, testen ob channel zur frequenz passt
     return 0;
 }
 

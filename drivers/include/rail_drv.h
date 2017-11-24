@@ -11,6 +11,7 @@
 #include "net/netdev2.h"
 #include "net/netdev2/ieee802154.h"
 #include "net/gnrc/nettype.h"
+#include "net/eui64.h" 
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,6 +27,9 @@ extern "C" {
 #define RAIL_TRANSCEIVER_STATE_RX               0x04
 #define RAIL_TRANSCEIVER_STATE_TX               0x05
  
+#define RAIL_DEFAULT_PANID         (IEEE802154_DEFAULT_PANID)
+#define RAIL_DEFAULT_TXPOWER       (IEEE802154_DEFAULT_TXPOWER)
+
 
 
 
@@ -43,10 +47,7 @@ typedef struct {
 
     uint8_t state;              // state of radio
     bool promiscuousMode;
-    uint16_t channel;
-    uint8_t mac_address[8];
-    uint16_t pan_address;
-    uint16_t short_address;
+    eui64_t eui;
 } rail_t;
 
 
@@ -55,6 +56,8 @@ void rail_setup(rail_t* dev, const rail_params_t* params);
 int rail_init(rail_t* dev);
 
 int rail_tx_prepare(rail_t* dev);
+
+int rail_start_rx(rail_t* dev);
 
 #ifdef __cplusplus
 }

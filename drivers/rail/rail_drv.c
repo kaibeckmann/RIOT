@@ -27,8 +27,39 @@
 
 #include "log.h"
 
+// channel config for sub gig radio
+#if (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
+static const RAIL_ChannelConfigEntry_t radio_channel_entrys[] = {
+#if (RAIL_RADIO_BAND == 868)
+    {
+    0U,             // channelNumberStart  
+    0U,             // channelNumberEnd
+    600000U,        // channelSpacing
+    868300000U      // baseFrequency
+    },
+#elif (RAIL_RADIO_BAND == 915)
+    {
+    1U,             // channelNumberStart
+    10U,            // channelNumberEnd
+    2000000U,       // channelSpacing
+    906000000U      // baseFrequency
+    },
+#endif   
+};
+static const RAIL_ChannelConfig_t radio_channels = {
+    (RAIL_ChannelConfigEntry_t *) &radio_channel_entrys[0],   // configs
+    1                       // length (number of configs)
+};
+#endif
+
+
+#if (RAIL_RADIO_BAND == 868)
+    static const uint32_t radio_config[] = RAIL_IEEE802154_CONFIG_868MHZ;
+#elif (RAIL_RADIO_BAND == 915)
+    static const uint32_t radio_config[] = RAIL_IEEE802154_CONFIG_915MHZ;
+#endif
 // receive buffer
-//static uint8_t _receiveBuffer[IEEE802154_FRAME_LEN_MAX + 1 + sizeof(RAIL_RxPacketInfo_t)];
+static uint8_t _receiveBuffer[IEEE802154_FRAME_LEN_MAX + 1 + sizeof(RAIL_RxPacketInfo_t)];
 static bool _receiveBufferIsAllocated = false;
 
 static volatile bool _rfReady = false;
@@ -60,6 +91,7 @@ void rail_setup(rail_t* dev, const rail_params_t* params)
     
 }
 
+#if (PTI_ENABLED == 1)
 int initPTI(rail_t* dev) {
 
     // init gpio for output
@@ -70,19 +102,34 @@ int initPTI(rail_t* dev) {
 
     return 0;
 }
+#endif
 
 int rail_init(rail_t* dev)
 {
+    netdev2_ieee802154_t* netdev = (netdev2_ieee802154_t *)dev;
     DEBUG("rail_init called\n");
     // c&p from openthread
     
+    // init foo
+    netdev->flags |= NETDEV2_IEEE802154_SRC_MODE_LONG;
+    RAIL_Version_t railVersion;
+    RAIL_VersionGet(&railVersion, true);
+
+    LOG_INFO("Using Silicon Labs RAIL Lib. Version %u.%u Rev: %u build: %u\n", 
+                railVersion.major, railVersion.minor, railVersion.rev, railVersion.build);
+
     // PTI init
 #if (PTI_ENABLED == 1)
     initPTI(dev);
 #endif
 
     // PA init
+#if RAIL_RADIO_BAND == 2400
     RADIO_PAInit_t paInit = (RADIO_PAInit_t) RADIO_PA_2P4_INIT;
+#elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
+    RADIO_PAInit_t paInit = (RADIO_PAInit_t) RADIO_PA_SUBGIG_INIT;
+#endif
+
     if (!RADIO_PA_Init(&paInit)) {
         // Error: The PA could not be initialized due to an improper 
         // configuration.
@@ -119,11 +166,36 @@ int rail_init(rail_t* dev)
 
     RAIL_Status_t r;
     // 802.15.4 RadioConfig
-    // if 2.4 GHz
+    // if 2.4 GHz channel config and radio config are done by 
+    // RAIL_IEEE802154_2p4GHzRadioConfig()
+#if RAIL_RADIO_BAND == 2400
+    DEBUG("using 2.4GHz radio band\n");
     r = RAIL_IEEE802154_2p4GHzRadioConfig();
     if (r != RAIL_STATUS_NO_ERROR){
         assert(false);
     }
+#elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
+#   if (RAIL_RADIO_BAND == 868)
+    DEBUG("using 868MHz radio band\n");
+    ret = RAIL_RadioConfig((void*) radio_config);
+    if (ret != 0) {
+        assert(false);
+    }
+#   elif (RAIL_RADIO_BAND == 915)
+    DEBUG("using 915MHz radio band\n");
+    ret = RAIL_RadioConfig((void*) radio_config);
+    if (ret != 0) {
+        assert(false);
+    }
+#   endif
+// if 868 or 915MHz manual channel config necessary
+ //   DEBUG("pre channel config\n");
+    RAIL_ChannelConfig(&radio_channels);
+ //   DEBUG("channel done\n");
+
+#endif /*  (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915) */
+
+
     // 802 init
     RAIL_IEEE802154_Config_t config = { false,  // promiscuousMode
                                         false,  // isPanCoordinator
@@ -134,6 +206,7 @@ int rail_init(rail_t* dev)
                                         894,   // ackTimeout
                                         NULL   // addresses, address filter, to allow only the given addresses
                                        };
+
     r = RAIL_IEEE802154_Init(&config);
     if (r != RAIL_STATUS_NO_ERROR) {
         assert(false);
@@ -141,13 +214,51 @@ int rail_init(rail_t* dev)
     // if pan coord
     // setpancoord
     // get mac addr
-    memcpy(dev->mac_address, (const void*)&DEVINFO->UNIQUEH, 4);
-    memcpy(dev->mac_address+4, (const void*)&DEVINFO->UNIQUEL, 4);
-    // set panid
-    // set short addr
-    // set long addr
-    // txpowerset
+    uint32_t tmp = DEVINFO->UNIQUEL;
+    dev->eui.uint64 = byteorder_htonll((uint64_t)((uint64_t)DEVINFO->UNIQUEH << 32) | tmp);
+ //   uint32_t tmp = byteorder_swapl(*((uint32_t*)dev->eui.uint8));
 
+//         *((uint32_t*)dev->eui.uint8+4) = 
+//         byteorder_swapl(*((uint32_t*)dev->eui.uint8+4));
+    DEBUG("Node EUI Addr: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n", 
+            dev->eui.uint8[0],     
+            dev->eui.uint8[1],     
+            dev->eui.uint8[2],     
+            dev->eui.uint8[3],     
+            dev->eui.uint8[4],     
+            dev->eui.uint8[5],     
+            dev->eui.uint8[6],     
+            dev->eui.uint8[7]);     
+
+   // set panid TODO if in dev, than that?
+    DEBUG("Set PanID to 0x%04x\n", RAIL_DEFAULT_PANID);
+    netdev->pan = RAIL_DEFAULT_PANID;
+    bool bRet = RAIL_IEEE802154_SetPanId(RAIL_DEFAULT_PANID);
+    if (bRet != true) {
+        DEBUG("Can not set PAN ID %d\n", RAIL_DEFAULT_PANID);
+    }
+    // set short addr
+    DEBUG("Set ShortAddr 0x%04x\n", NTOHS(dev->eui.uint16[3].u16));
+//    network_uint16_t short_addr = byteorder_htons(dev->eui.uint16[0].u16);
+    memcpy(netdev->short_addr, &dev->eui.uint16[3].u16, 2);
+    bRet = RAIL_IEEE802154_SetShortAddress(dev->eui.uint16[3].u16);
+    if (bRet != true) {
+        DEBUG("Can not set short addr\n");
+    }
+    // set long addr
+    DEBUG("Set LongAddr 0x%08lx%08lx\n", NTOHL(dev->eui.uint64.u32[0]), NTOHL(dev->eui.uint64.u32[1]));
+//    network_uint64_t long_addr = byteorder_htonll(dev->eui.uint64);
+    memcpy(netdev->long_addr, dev->eui.uint8, 8);
+    bRet = RAIL_IEEE802154_SetLongAddress(dev->eui.uint8);
+    if (bRet != true) {
+        DEBUG("Can not set long addr\n");
+    }
+    // txpowerset
+    RAIL_TxPowerSet(RAIL_DEFAULT_TXPOWER);
+//    RAIL_TxPowerSet(5000);
+    int32_t power = RAIL_TxPowerGet();
+    DEBUG("TX Power set to: %ld deci dBm\n", power); 
+    //RAIL_TxPowerSet(dev->params.max_transit_power);
 
     // Data Management allready the default
     RAIL_DataConfig_t railDataConfig =
@@ -164,10 +275,6 @@ int rail_init(rail_t* dev)
         assert(false);
     }
     
-        // 802.15.4 configuration
-    
-    RAIL_TxPowerSet(dev->params.max_transit_power);
-    
     RAIL_RfIdle();
     dev->state = RAIL_TRANSCEIVER_STATE_IDLE;
     
@@ -180,12 +287,38 @@ int rail_init(rail_t* dev)
 
 int rail_tx_prepare(rail_t* dev)
 {
+    // check state
+   // if uninit/init etc/ returnerror;
+   // if calibrate, error
+   // tx error
+   // if idle and rx
+   //    if waiting for ack
+   //      no timeout? error
+   //      timeout?, stats++, cont
     
-    
+    dev->state = RAIL_TRANSCEIVER_STATE_TX;
     return 0;
 }
 
+int rail_start_rx(rail_t* dev) 
+{
 
+   // check state
+   // if uninit/init etc/ returnerror;
+   // if calibrate, error
+   // tx error
+   // if idle and rx
+   //    if waiting for ack
+   //      no timeout? error
+   //      timeout?, stats++, cont
+   //
+    // check if set?
+    //RAIL_IEEE802154_SetPromiscuousMode(false);
+    RAIL_IEEE802154_SetPromiscuousMode(true);
+    RAIL_RxStart(dev->netdev.chan);
+    dev->state = RAIL_TRANSCEIVER_STATE_RX;
+    return 0;
+}
 
 // start impl for the RAIL callback functions needed by the rail radio lib
 // docu c&p from rail-library-callbacks.info
@@ -275,7 +408,28 @@ void RAILCb_CalNeeded(void)
 void RAILCb_RxRadioStatus(uint8_t aStatus)
 {
     (void)aStatus;
-    DEBUG("RailCB RxRadioStatus status 0x%2x \n", aStatus);
+    switch (aStatus) {
+        case (RAIL_RX_CONFIG_PREAMBLE_DETECT):
+            DEBUG("RailCB RxRadioStatus status PREAMBLE_DETECT\n"); 
+            break;
+        case (RAIL_RX_CONFIG_SYNC1_DETECT):
+            DEBUG("RailCB RxRadioStatus status SYNC1_DETECT\n"); 
+            break;
+        case (RAIL_RX_CONFIG_SYNC2_DETECT):
+            DEBUG("RailCB RxRadioStatus status SYNC2_DETECT\n"); 
+            break;
+        case (RAIL_RX_CONFIG_INVALID_CRC):
+            DEBUG("RailCB RxRadioStatus status INVALID_CRC\n"); 
+            break;
+        case (RAIL_RX_CONFIG_BUFFER_OVERFLOW):
+            DEBUG("RailCB RxRadioStatus status BUFFER_OVERFLOW\n"); 
+            break;
+        case (RAIL_RX_CONFIG_ADDRESS_FILTERED):
+            DEBUG("RailCB RxRadioStatus status ADDRESS_FILTERED\n"); 
+            break;
+        default:
+            DEBUG("RailCB RxRadioStatus status 0x%2x \n", aStatus);
+    };
 }
 
 
@@ -295,6 +449,25 @@ void RAILCb_RxRadioStatus(uint8_t aStatus)
  */
 void RAILCb_RxPacketReceived(void *rxPacketHandle) {
     DEBUG("RailCB RxPacketReceived  \n");
+    RAIL_RxPacketInfo_t* packet = (RAIL_RxPacketInfo_t*) rxPacketHandle;
+
+    DEBUG("time received: %lu\n"
+            "crcStatus %s \n"
+            "frameCodingStatus: %s\n"
+            "isAck: %s\n"
+            "subPhy: %u\n"
+            "rssiLatch: %d dBm\n"
+            "lqi: %u\n"
+            "syncWordId: %u\n",
+            packet->appendedInfo.timeUs,
+            packet->appendedInfo.crcStatus ? "Passed":"Failed",
+            packet->appendedInfo.frameCodingStatus ? "Pass":"Fail",
+            packet->appendedInfo.isAck ? "Ack" : "Not a Ack",
+            packet->appendedInfo.subPhy,
+            packet->appendedInfo.rssiLatch,
+            packet->appendedInfo.lqi,
+            packet->appendedInfo.syncWordId
+         );
 }
 
 
@@ -325,29 +498,29 @@ void RAILCb_RadioStateChanged(uint8_t aState)
 void *RAILCb_AllocateMemory(uint32_t aSize)
 {
     
-    DEBUG("RailCB AllocateMemory size: %"PRIu32" \n", aSize);
+ //
+ //DEBUG("RailCB AllocateMemory size: %"PRIu32" \n", aSize);
     
-    // todo howto make sure there is only one buffer alloced?
-    //uint8_t* pointer = NULL;
-    // todo replace with riot irq functions
-    //CORE_DECLARE_IRQ_STATE;
-    /*
+    // we start with only one buffer, maybe it is enough
+    uint8_t* pointer = NULL;
+    
     if(aSize > (IEEE802154_FRAME_LEN_MAX + 1 + sizeof(RAIL_RxPacketInfo_t))) {
         LOG_ERROR("Received package is to big for buffer (size %"PRIu32")\n", aSize);
         return NULL;
     }
 
+    CORE_DECLARE_IRQ_STATE;
     CORE_ENTER_CRITICAL();
     if (_receiveBufferIsAllocated == false) {
         _receiveBufferIsAllocated = true;
         pointer = _receiveBuffer;
-    }
+    } else {
+        LOG_ERROR("The only receive buffer allready taken, we need a queue!\n");
+    } 
 
-*/
-//exit:
- //  CORE_EXIT_CRITICAL();
-//    return pointer;
-    return NULL;
+    CORE_EXIT_CRITICAL();
+    return pointer;
+//    return NULL;
 }
 
 /**
@@ -373,7 +546,7 @@ void *RAILCb_BeginWriteMemory(void *aHandle, uint32_t aOffset,
                               uint32_t *available)
 {
     (void)available;
-    DEBUG("RailCB BeginWriteMemory\n");
+//    DEBUG("RailCB BeginWriteMemory\n");
     return ((uint8_t *)aHandle) + aOffset;
 }
 
@@ -397,7 +570,7 @@ void RAILCb_EndWriteMemory(void *aHandle, uint32_t aOffset, uint32_t aSize)
     (void)aHandle;
     (void)aOffset;
     (void)aSize;
-    DEBUG("RailCB EndWriteMemory\n");
+//    DEBUG("RailCB EndWriteMemory\n");
 }
 
 /**
@@ -413,7 +586,7 @@ void RAILCb_EndWriteMemory(void *aHandle, uint32_t aOffset, uint32_t aSize)
 void RAILCb_FreeMemory(void *aHandle)
 {
     (void)aHandle;
-    DEBUG("RailCB FreeMemory\n");
+ //   DEBUG("RailCB FreeMemory\n");
     
     CORE_CRITICAL_SECTION(
         _receiveBufferIsAllocated = false;
