@@ -27,7 +27,9 @@ extern "C" {
 #define RAIL_TRANSCEIVER_STATE_RX               0x04
 #define RAIL_TRANSCEIVER_STATE_TX               0x05
  
-#define RAIL_DEFAULT_PANID         (IEEE802154_DEFAULT_PANID)
+
+//#define RAIL_DEFAULT_PANID         (IEEE802154_DEFAULT_PANID)
+#define RAIL_DEFAULT_PANID         0x0023
 #define RAIL_DEFAULT_TXPOWER       (IEEE802154_DEFAULT_TXPOWER)
 
 
@@ -48,6 +50,13 @@ typedef struct {
     uint8_t state;              // state of radio
     bool promiscuousMode;
     eui64_t eui;
+
+    // tmp receive buffer till proper buffer management is avaiable
+    uint8_t recv_frame[IEEE802154_FRAME_LEN_MAX + 1];
+    bool recv_taken;
+    uint16_t recv_size;
+    uint8_t recv_rssi;
+    uint8_t recv_lqi;
 } rail_t;
 
 

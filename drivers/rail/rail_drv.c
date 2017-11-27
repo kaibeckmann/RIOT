@@ -27,6 +27,7 @@
 
 #include "log.h"
 
+////////////////////// RADIO CONFIGURATION /////////////////////////////
 // channel config for sub gig radio
 #if (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
 static const RAIL_ChannelConfigEntry_t radio_channel_entrys[] = {
@@ -58,11 +59,25 @@ static const RAIL_ChannelConfig_t radio_channels = {
 #elif (RAIL_RADIO_BAND == 915)
     static const uint32_t radio_config[] = RAIL_IEEE802154_CONFIG_915MHZ;
 #endif
+
+
+
+//////////////////// BUFFER MANAGEMENT //////////////////////////////////////
+
 // receive buffer
 static uint8_t _receiveBuffer[IEEE802154_FRAME_LEN_MAX + 1 + sizeof(RAIL_RxPacketInfo_t)];
 static bool _receiveBufferIsAllocated = false;
 
+
+////////////////////// LOKAL VARIABLES /////////////////////////////////////
+
+// if rf radio is initialised
 static volatile bool _rfReady = false;
+
+// ref to rail_t/ netdev_t struct for this driver
+// TODO howto distiguish between multible netdevs ?
+//    necessary for multiprotocol support etc.
+static rail_t* _rail_dev = NULL;
 
 void rail_setup(rail_t* dev, const rail_params_t* params)
 {
@@ -106,24 +121,34 @@ int initPTI(rail_t* dev) {
 
 int rail_init(rail_t* dev)
 {
+
     netdev2_ieee802154_t* netdev = (netdev2_ieee802154_t *)dev;
-    DEBUG("rail_init called\n");
-    // c&p from openthread
     
-    // init foo
+    // save ref for this driver
+    _rail_dev = dev;
+
+    dev->recv_taken = false;
+
+    DEBUG("rail_init called\n");
+    
+    // init but what does it do?
     netdev->flags |= NETDEV2_IEEE802154_SRC_MODE_LONG;
+    
+    
+    // get informations about the used raillib
+    // TODO check if driver is compatible?
     RAIL_Version_t railVersion;
     RAIL_VersionGet(&railVersion, true);
 
     LOG_INFO("Using Silicon Labs RAIL Lib. Version %u.%u Rev: %u build: %u\n", 
                 railVersion.major, railVersion.minor, railVersion.rev, railVersion.build);
 
-    // PTI init
+    // EFR32 Packet Trace Interface (PTI) init
 #if (PTI_ENABLED == 1)
     initPTI(dev);
 #endif
 
-    // PA init
+    // rf power amplifier (PA) init
 #if RAIL_RADIO_BAND == 2400
     RADIO_PAInit_t paInit = (RADIO_PAInit_t) RADIO_PA_2P4_INIT;
 #elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
@@ -140,7 +165,7 @@ int rail_init(rail_t* dev)
     DEBUG("RADIO_PA_Init done\n");
     
     // radio debug?
-    // TODO radio debug
+    // TODO radio debug 
      
 
     // RfInit
@@ -213,13 +238,11 @@ int rail_init(rail_t* dev)
     }
     // if pan coord
     // setpancoord
-    // get mac addr
+
+    // get mac addr from SoC
     uint32_t tmp = DEVINFO->UNIQUEL;
     dev->eui.uint64 = byteorder_htonll((uint64_t)((uint64_t)DEVINFO->UNIQUEH << 32) | tmp);
- //   uint32_t tmp = byteorder_swapl(*((uint32_t*)dev->eui.uint8));
 
-//         *((uint32_t*)dev->eui.uint8+4) = 
-//         byteorder_swapl(*((uint32_t*)dev->eui.uint8+4));
     DEBUG("Node EUI Addr: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n", 
             dev->eui.uint8[0],     
             dev->eui.uint8[1],     
@@ -237,14 +260,15 @@ int rail_init(rail_t* dev)
     if (bRet != true) {
         DEBUG("Can not set PAN ID %d\n", RAIL_DEFAULT_PANID);
     }
+
     // set short addr
     DEBUG("Set ShortAddr 0x%04x\n", NTOHS(dev->eui.uint16[3].u16));
-//    network_uint16_t short_addr = byteorder_htons(dev->eui.uint16[0].u16);
     memcpy(netdev->short_addr, &dev->eui.uint16[3].u16, 2);
     bRet = RAIL_IEEE802154_SetShortAddress(dev->eui.uint16[3].u16);
     if (bRet != true) {
         DEBUG("Can not set short addr\n");
     }
+
     // set long addr
     DEBUG("Set LongAddr 0x%08lx%08lx\n", NTOHL(dev->eui.uint64.u32[0]), NTOHL(dev->eui.uint64.u32[1]));
 //    network_uint64_t long_addr = byteorder_htonll(dev->eui.uint64);
@@ -253,12 +277,14 @@ int rail_init(rail_t* dev)
     if (bRet != true) {
         DEBUG("Can not set long addr\n");
     }
+
     // txpowerset
+    // TODO get it form configuration / parameter?
     RAIL_TxPowerSet(RAIL_DEFAULT_TXPOWER);
-//    RAIL_TxPowerSet(5000);
+    //RAIL_TxPowerSet(dev->params.max_transit_power);
+    
     int32_t power = RAIL_TxPowerGet();
     DEBUG("TX Power set to: %ld deci dBm\n", power); 
-    //RAIL_TxPowerSet(dev->params.max_transit_power);
 
     // Data Management allready the default
     RAIL_DataConfig_t railDataConfig =
@@ -269,12 +295,13 @@ int rail_init(rail_t* dev)
         PACKET_MODE,
     };
 
-    
     r = RAIL_DataConfig(&railDataConfig);
     if (r != RAIL_STATUS_NO_ERROR) {
         assert(false);
     }
     
+            
+    // put radio to idle mode
     RAIL_RfIdle();
     dev->state = RAIL_TRANSCEIVER_STATE_IDLE;
     
@@ -314,7 +341,11 @@ int rail_start_rx(rail_t* dev)
    //
     // check if set?
     //RAIL_IEEE802154_SetPromiscuousMode(false);
+    
+    // for debugging purpose -> receive everything ;)
     RAIL_IEEE802154_SetPromiscuousMode(true);
+
+    // set channel to listen to
     RAIL_RxStart(dev->netdev.chan);
     dev->state = RAIL_TRANSCEIVER_STATE_RX;
     return 0;
@@ -458,7 +489,8 @@ void RAILCb_RxPacketReceived(void *rxPacketHandle) {
             "subPhy: %u\n"
             "rssiLatch: %d dBm\n"
             "lqi: %u\n"
-            "syncWordId: %u\n",
+            "syncWordId: %u\n"
+            "payload size: %u\n",
             packet->appendedInfo.timeUs,
             packet->appendedInfo.crcStatus ? "Passed":"Failed",
             packet->appendedInfo.frameCodingStatus ? "Pass":"Fail",
@@ -466,8 +498,36 @@ void RAILCb_RxPacketReceived(void *rxPacketHandle) {
             packet->appendedInfo.subPhy,
             packet->appendedInfo.rssiLatch,
             packet->appendedInfo.lqi,
-            packet->appendedInfo.syncWordId
+            packet->appendedInfo.syncWordId,
+            packet->dataLength
          );
+
+    if (_rail_dev->recv_taken == true) {
+        DEBUG("Frame allready taken\n");
+        return ;
+    }
+
+    // temporary cpy package to static buffer TODO should be part of the buffer 
+    // memory management (like mentioned in the api docu -> ref counter etc?
+    if (sizeof(_rail_dev->recv_frame) < packet->dataLength) {
+        DEBUG("ERROR, received packet (%d byte) is bigger than receive" 
+                " frame (%d byte)\n", packet->dataLength, sizeof(_rail_dev->recv_frame));
+        return;
+    }
+    // TODO size in first byte as well?
+    memcpy(_rail_dev->recv_frame, packet->dataPtr+1, packet->dataLength-1);
+    _rail_dev->recv_size = packet->dataLength-1;
+
+    // TODO save mnore of the meta data of packet
+    _rail_dev->recv_rssi = packet->appendedInfo.rssiLatch;
+    _rail_dev->recv_lqi = packet->appendedInfo.lqi;
+
+
+    // tmp
+    _rail_dev->recv_taken = true;
+
+    // inform the netdev stack of incoming packet 
+    _rail_dev->netdev.netdev.event_callback((netdev2_t*) _rail_dev, NETDEV2_EVENT_ISR);
 }
 
 

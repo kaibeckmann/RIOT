@@ -54,27 +54,10 @@ const netdev2_driver_t rail_driver = {
 };
 
 
-
-
-static void _lowlevel_irq_handler(void* arg)
-{
-    netdev2_t* dev = (netdev2_t*) arg;
-
-    // todo where to set what happend?
-
-    // delegate irq handling to device thread
-    if (dev->event_callback) {
-        dev->event_callback(dev, NETDEV2_EVENT_ISR);
-    }
-}
-
 static int _init(netdev2_t* netdev) {
     
     rail_t* dev = (rail_t*) netdev;
-
-    void (*foo)(void*) = _lowlevel_irq_handler;
     
-    foo =foo;
     
     DEBUG("rail_netdev->init called\n");
      // set default channel
@@ -86,6 +69,13 @@ static int _init(netdev2_t* netdev) {
     dev->netdev.chan = 1;
 #endif
    
+#ifdef MODULE_GNRC_SIXLOWPAN
+    dev->netdev.proto = GNRC_NETTYPE_SIXLOWPAN;
+#elif MODULE_GNRC
+    dev->netdev.proto = GNRC_NETTYPE_UNDEF;
+#endif
+
+
     int ret;
     
     ret = rail_init(dev);
@@ -181,11 +171,11 @@ static int _send(netdev2_t* netdev, const struct iovec* vector, unsigned count)
     if (ret != 0) {
         return ret;
     }
-    DEBUG("tx prepared\n");
+//    DEBUG("tx prepared\n");
     // or in tx_prepare?
    
     RAIL_RfIdleExt(RAIL_IDLE, true);
-    DEBUG("RF changed to IDLE\n");
+//    DEBUG("RF changed to IDLE\n");
     
   //  RAIL_CalValues_t calValues;
   //   calValues.imageRejection = RAIL_CAL_INVALID_VALUE;
@@ -210,10 +200,8 @@ static int _send(netdev2_t* netdev, const struct iovec* vector, unsigned count)
     (void)txData;
     
   
-   // r_ret =  RAIL_TxStart(dev->channel, NULL, NULL);
     
-    
-    r_ret = RAIL_TxStartWithOptions(0, //dev->netdev.chan, // channel to transmit on
+    r_ret = RAIL_TxStartWithOptions(dev->netdev.chan, // channel to transmit on
                                     &txOption,      // option for transmit
                                     RAIL_CcaCsma,   // function to call before transmitting -> use csma
                                     (void*) &csmaConfig);    // csma std config for 802.15.4
@@ -244,12 +232,48 @@ static int _send(netdev2_t* netdev, const struct iovec* vector, unsigned count)
 static int _recv(netdev2_t* netdev, void* buf, size_t len, void* info)
 {
     DEBUG("rail_netdev->recv called\n");
-    return 0;
+
+    rail_t* rail_dev = (rail_t*) netdev;
+
+    // cases:
+    // buf == NULL && len == 0 -> return packet size, no dropping
+    if (buf == NULL && len == 0) {
+        DEBUG("_recv: no dropping return packet size: %d\n", rail_dev->recv_size);
+        return rail_dev->recv_size;
+    }
+    // buf == NULL && len > 0 -> return packet size + drop it
+    if (buf == NULL && len > 0) {
+        // TODO drop it?
+        DEBUG("_recv: drop packet - return packet size: %d\n", rail_dev->recv_size);
+        return rail_dev->recv_size;
+    }
+    size_t cpy_size = (len > rail_dev->recv_size) ? rail_dev->recv_size : len;
+
+    memcpy(buf, rail_dev->recv_frame, cpy_size);
+
+    rail_dev->recv_taken = false;
+    /*  
+    DEBUG("Print buf cpy size %d: ", cpy_size);
+    for (int i = 0; i < cpy_size; i++) {
+        if (i % 4 == 0) DEBUG("\n");
+        DEBUG("0x%02x ", ((uint8_t*)buf)[i]);
+    }
+    DEBUG("\n");
+*/
+    if (info != NULL) { 
+        netdev2_ieee802154_rx_info_t* rx_info = info;
+        rx_info->rssi = rail_dev->recv_rssi;
+        rx_info->lqi = rail_dev->recv_lqi;
+    }
+
+    return cpy_size;
 }
 
 static void _isr(netdev2_t* netdev) 
 {
    DEBUG("rail_netdev->isr called\n");
+   // dunno what to do, but call the callback ...
+   netdev->event_callback(netdev, NETDEV2_EVENT_RX_COMPLETE);
 }
 static int _get(netdev2_t* netdev, netopt_t opt, void* val, size_t max_len) 
 {
