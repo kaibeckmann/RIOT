@@ -40,6 +40,13 @@ extern "C" {
  * @name    Clock configuration
  * @{
  */
+#ifndef CMU_HFXOINIT
+#define CMU_HFXOINIT        CMU_HFXOINIT_DEFAULT
+#endif
+#ifndef CMU_LFXOINIT
+#define CMU_LFXOINIT        CMU_LFXOINIT_DEFAULT
+#endif
+
 #ifndef CLOCK_HF
 #define CLOCK_HF            cmuSelect_HFXO
 #endif
@@ -55,8 +62,24 @@ extern "C" {
 #ifndef CLOCK_LFE
 #define CLOCK_LFE           cmuSelect_LFRCO
 #endif
+/** @} */
 
+/**
+ * @name    EMU configuration
+ * @{
+ */
+#ifndef EMU_DCDCINIT
+#define EMU_DCDCINIT         EMU_DCDCINIT_DEFAULT
+#endif
+#ifndef EMU_EM23INIT
+#define EMU_EM23INIT         EMU_EM23INIT_DEFAULT
+#endif
+#ifndef EMU_EM4INIT
+#define EMU_EM4INIT         EMU_EM4INIT_DEFAULT
+#endif
+/** @} */
 
+#if 0
 #define CLOCK_HFXO_INIT                                                  \
   {                                                                        \
     false,      /* Low-noise mode for EFR32 */                             \
@@ -97,6 +120,9 @@ extern "C" {
   }
 #endif
 
+#endif
+
+#if 0
 #if !defined(EMU_DCDCINIT_WSTK_DEFAULT)
 /* Use emlib defaults */
 #define EMU_DCDCINIT_WSTK_DEFAULT EMU_DCDCINIT_DEFAULT
@@ -105,6 +131,24 @@ extern "C" {
 #define CLOCK_HFXO_FREQ 38400000UL
 #define CLOCK_LFXO_FREQ 32768UL
 
+#endif
+
+
+/** @} */
+
+/**
+ * @name    EMU configuration
+ * @{
+ */
+#ifndef EMU_DCDCINIT
+#define EMU_DCDCINIT         EMU_DCDCINIT_DEFAULT
+#endif
+#ifndef EMU_EM23INIT
+#define EMU_EM23INIT         EMU_EM23INIT_DEFAULT
+#endif
+#ifndef EMU_EM4INIT
+#define EMU_EM4INIT         EMU_EM4INIT_DEFAULT
+#endif
 /** @} */
 
 /**

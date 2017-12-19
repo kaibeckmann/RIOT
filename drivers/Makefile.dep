@@ -257,6 +257,20 @@ ifneq (,$(filter pcd8544,$(USEMODULE)))
   USEMODULE += xtimer
 endif
 
+ifneq (,$(filter rail,$(USEMODULE)))
+  USEMODULE += rail
+  USEMODULE += xtimer
+  USEMODULE += uuid
+  USEMODULE += netif
+  USEMODULE += ieee802154
+  USEMODULE += netdev2_ieee802154
+  USEPKG 	+= gecko_sdk
+  ifneq (,$(filter gnrc_netdev_default,$(USEMODULE)))
+    USEMODULE += gnrc_netdev
+  endif
+endif
+
+
 ifneq (,$(filter rgbled,$(USEMODULE)))
   USEMODULE += color
 endif
