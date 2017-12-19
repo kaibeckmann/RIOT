@@ -127,11 +127,12 @@ extern "C" {
 /* Use emlib defaults */
 #define EMU_DCDCINIT_WSTK_DEFAULT EMU_DCDCINIT_DEFAULT
 #endif
+#endif
 
 #define CLOCK_HFXO_FREQ 38400000UL
 #define CLOCK_LFXO_FREQ 32768UL
 
-#endif
+
 
 
 /** @} */
