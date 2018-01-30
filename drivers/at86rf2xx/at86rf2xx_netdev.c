@@ -378,6 +378,13 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             res = sizeof(int8_t);
             break;
 
+        case NETOPT_AUTOACK :
+            assert(max_len >= sizeof(netopt_enable_t));
+            uint8_t tmp = at86rf2xx_reg_read(dev, AT86RF2XX_REG__CSMA_SEED_1);
+            *((netopt_enable_t *)val) = (tmp & AT86RF2XX_CSMA_SEED_1__AACK_DIS_ACK) ? false : true;
+            res = sizeof(netopt_enable_t);
+            break;
+
         default:
             res = -ENOTSUP;
             break;
@@ -428,8 +435,11 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
         case NETOPT_CHANNEL:
             assert(len == sizeof(uint16_t));
             uint8_t chan = (((const uint16_t *)val)[0]) & UINT8_MAX;
-            if ((chan < AT86RF2XX_MIN_CHANNEL)
-                || (chan > AT86RF2XX_MAX_CHANNEL)) {
+#if AT86RF2XX_MIN_CHANNEL
+            if (chan < AT86RF2XX_MIN_CHANNEL || chan > AT86RF2XX_MAX_CHANNEL) {
+#else
+            if (chan > AT86RF2XX_MAX_CHANNEL) {
+#endif /* AT86RF2XX_MIN_CHANNEL */
                 res = -EINVAL;
                 break;
             }
@@ -473,7 +483,7 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
         case NETOPT_AUTOACK:
             at86rf2xx_set_option(dev, AT86RF2XX_OPT_AUTOACK,
                                  ((const bool *)val)[0]);
-            /* don't set res to set netdev_ieee802154_t::flags */
+            res = sizeof(netopt_enable_t);
             break;
 
         case NETOPT_RETRANS:

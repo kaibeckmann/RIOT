@@ -109,7 +109,7 @@ uint8_t sx127x_get_syncword(const sx127x_t *dev)
 
 void sx127x_set_syncword(sx127x_t *dev, uint8_t syncword)
 {
-    DEBUG("[DEBUG] Set syncword: %d\n", syncword);
+    DEBUG("[DEBUG] Set syncword: %02x\n", syncword);
 
     sx127x_reg_write(dev, SX127X_REG_LR_SYNCWORD, syncword);
 }
@@ -309,9 +309,8 @@ void sx127x_set_rx(sx127x_t *dev)
     }
 
     sx127x_set_state(dev, SX127X_RF_RX_RUNNING);
-    if (dev->settings.window_timeout != 0) {
-        xtimer_set(&(dev->_internal.rx_timeout_timer),
-                   dev->settings.window_timeout);
+    if (dev->settings.lora.rx_timeout != 0) {
+        xtimer_set(&(dev->_internal.rx_timeout_timer), dev->settings.lora.rx_timeout);
     }
 
     if (dev->settings.lora.flags & SX127X_RX_CONTINUOUS_FLAG) {
@@ -372,9 +371,8 @@ void sx127x_set_tx(sx127x_t *dev)
     }
 
     sx127x_set_state(dev, SX127X_RF_RX_RUNNING);
-    if (dev->settings.window_timeout != 0) {
-        xtimer_set(&(dev->_internal.tx_timeout_timer),
-                   dev->settings.window_timeout);
+    if (dev->settings.lora.tx_timeout != 0) {
+        xtimer_set(&(dev->_internal.tx_timeout_timer), dev->settings.lora.tx_timeout);
     }
     sx127x_set_op_mode(dev, SX127X_RF_OPMODE_TRANSMITTER );
 }
@@ -448,7 +446,7 @@ uint8_t sx127x_get_bandwidth(const sx127x_t *dev)
     return dev->settings.lora.bandwidth;
 }
 
-inline void _low_datarate_optimize(sx127x_t *dev)
+static void _low_datarate_optimize(sx127x_t *dev)
 {
     if ( ((dev->settings.lora.bandwidth == LORA_BW_125_KHZ) &&
           ((dev->settings.lora.datarate == LORA_SF11) ||
@@ -473,7 +471,7 @@ inline void _low_datarate_optimize(sx127x_t *dev)
 #endif
 }
 
-inline void _update_bandwidth(const sx127x_t *dev)
+static void _update_bandwidth(const sx127x_t *dev)
 {
     uint8_t config1_reg = sx127x_reg_read(dev, SX127X_REG_LR_MODEMCONFIG1);
 #if defined(MODULE_SX1272)

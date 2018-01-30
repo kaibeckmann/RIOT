@@ -24,9 +24,8 @@
 #include "debug.h"
 
 #if GNRC_IPV6_NIB_CONF_6LN
-#if ENABLE_DEBUG
+
 static char addr_str[IPV6_ADDR_MAX_STR_LEN];
-#endif
 
 extern void _handle_search_rtr(gnrc_netif_t *netif);
 
@@ -58,6 +57,12 @@ static inline uint8_t _reverse_iid(const ipv6_addr_t *dst,
             memcpy(l2addr, &dst->u64[1], sizeof(dst->u64[1]));
             l2addr[0] ^= 0x02;
             return sizeof(dst->u64[1]);
+#endif  /* MODULE_NETDEV_IEEE802154 */
+#ifdef MODULE_NRFMIN
+        case NETDEV_TYPE_NRFMIN:
+            l2addr[0] = dst->u8[14];
+            l2addr[1] = dst->u8[15];
+            return sizeof(uint16_t);
 #endif  /* MODULE_NETDEV_IEEE802154 */
 #ifdef MODULE_CC110X
         case NETDEV_TYPE_CC110X:
@@ -149,7 +154,7 @@ uint8_t _handle_aro(gnrc_netif_t *netif, const ipv6_hdr_t *ipv6,
                           ipv6_addr_to_str(addr_str,
                                            &ipv6->dst,
                                            sizeof(addr_str)), netif->pid);
-                    gnrc_netif_ipv6_addr_remove(netif, &ipv6->dst);
+                    gnrc_netif_ipv6_addr_remove_internal(netif, &ipv6->dst);
                     /* TODO: generate new address */
                     break;
                 case SIXLOWPAN_ND_STATUS_NC_FULL: {

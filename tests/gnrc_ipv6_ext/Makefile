@@ -1,5 +1,4 @@
 # name of your application
-APPLICATION = gnrc_ipv6_ext
 include ../Makefile.tests_common
 
 BOARD_INSUFFICIENT_MEMORY := airfy-beacon chronos maple-mini msb-430 msb-430h \
@@ -23,10 +22,7 @@ USEMODULE += gnrc_udp
 # Add also the shell, some shell commands
 USEMODULE += ps
 
-# Comment this out to disable code in RIOT that does safety checking
-# which is not needed in a production environment but helps in the
-# development process:
-CFLAGS += -DDEVELHELP
+CFLAGS += -DGNRC_NETIF_IPV6_ADDRS_NUMOF=3
 
 include $(RIOTBASE)/Makefile.include
 

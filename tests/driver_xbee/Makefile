@@ -1,4 +1,3 @@
-APPLICATION = driver_xbee
 include ../Makefile.tests_common
 
 FEATURES_REQUIRED = periph_uart periph_gpio
@@ -15,11 +14,6 @@ USEMODULE += shell_commands
 
 # No need of big buffer for this test
 CFLAGS += -DGNRC_PKTBUF_SIZE=512
-
-# Comment this out to disable code in RIOT that does safety checking
-# which is not needed in a production environment but helps in the
-# development process:
-CFLAGS += -DDEVELHELP
 
 # add current directory to the include path. Putting it in CFLAGS will make
 # it go to the beginning, before the standard includes.

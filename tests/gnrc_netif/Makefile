@@ -1,5 +1,3 @@
-# name of your application
-APPLICATION = gnrc_ipv6_nib
 include ../Makefile.tests_common
 
 BOARD_INSUFFICIENT_MEMORY := airfy-beacon b-l072z-lrwan1 bluepill calliope-mini \
@@ -23,7 +21,6 @@ USEMODULE += netdev_ieee802154
 USEMODULE += netdev_test
 USEMODULE += od
 
-CFLAGS += -DDEVELHELP
 CFLAGS += -DGNRC_NETIF_NUMOF=4
 CFLAGS += -DGNRC_NETIF_ADDRS_NUMOF=16
 CFLAGS += -DGNRC_NETIF_GROUPS_NUMOF=8

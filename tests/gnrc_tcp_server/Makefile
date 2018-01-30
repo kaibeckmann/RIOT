@@ -1,5 +1,3 @@
-# name of your application
-APPLICATION = gnrc_tcp_server
 include ../Makefile.tests_common
 
 # If no BOARD is found in the environment, use this default:
@@ -26,11 +24,6 @@ RIOTBASE ?= $(CURDIR)/../..
 CFLAGS += -DLOCAL_ADDR=\"$(TCP_LOCAL_ADDR)\"
 CFLAGS += -DLOCAL_PORT=$(TCP_LOCAL_PORT)
 CFLAGS += -DCYCLES=$(TCP_TEST_CYCLES)
-
-# Comment this out to disable code in RIOT that does safety checking
-# which is not needed in a production environment but helps in the
-# development process:
-#CFLAGS += -DDEVELHELP
 
 # Modules to include
 USEMODULE += gnrc_netdev_default

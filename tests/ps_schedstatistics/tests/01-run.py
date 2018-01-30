@@ -9,10 +9,6 @@
 import os
 import sys
 
-sys.path.append(os.path.join(os.environ['RIOTBASE'], 'dist/tools/testrunner'))
-import testrunner
-
-
 PS_EXPECTED = (
     ('\tpid | name                 | state    Q | pri | stack  ( used) | '
      'base addr  | current     | runtime  | switches'),
@@ -34,6 +30,7 @@ PS_EXPECTED = (
      '0x\d+ | 0x\d+  | \d+\.\d+% |      \d+'),
     ('\t    | SUM                  |            |     | \d+  (\d+)')
 )
+
 
 def _check_startup(child):
     for i in range(5):
@@ -61,5 +58,8 @@ def testfunc(child):
     _check_help(child)
     _check_ps(child)
 
+
 if __name__ == "__main__":
-    sys.exit(testrunner.run(testfunc))
+    sys.path.append(os.path.join(os.environ['RIOTBASE'], 'dist/tools/testrunner'))
+    from testrunner import run
+    sys.exit(run(testfunc))

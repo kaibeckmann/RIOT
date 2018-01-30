@@ -16,7 +16,8 @@ BOARD_INSUFFICIENT_MEMORY := airfy-beacon b-l072z-lrwan1 bluepill calliope-mini 
                              spark-core stm32f0discovery telosb weio wsn430-v1_3b \
                              wsn430-v1_4 yunjia-nrf51822 z1
 
-BOARD_BLACKLIST += mips-malta pic32-wifire pic32-clicker# No full UART available.
+# The following boards do not have an available UART
+BOARD_BLACKLIST += mips-malta pic32-wifire pic32-clicker ruuvitag thingy52
 
 # use ethos (ethernet over serial) for network communication and stdio over
 # UART, but not on native, as native has a tap interface towards the host.
@@ -28,6 +29,10 @@ ifeq (,$(filter native,$(BOARD)))
   ETHOS_BAUDRATE ?= 115200
   CFLAGS += -DETHOS_BAUDRATE=$(ETHOS_BAUDRATE) -DUSE_ETHOS_FOR_STDIO
   FEATURES_REQUIRED += periph_uart
+else
+  GNRC_NETIF_NUMOF := 2
+  TERMFLAGS += -z [::1]:17754
+  USEMODULE += socket_zep
 endif
 
 # SLIP legacy compatibility
@@ -67,16 +72,28 @@ USEMODULE += ps
 # include UHCP client
 USEMODULE += gnrc_uhcpc
 
+# Optionally include RPL as a routing protocol. When includede gnrc_uhcpc will
+# configure the node as a RPL DODAG root when receiving a prefix.
+#USEMODULE += gnrc_rpl
+
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the
 # development process:
-CFLAGS += -DDEVELHELP
+DEVELHELP ?= 1
 
 # Change this to 0 show compiler invocation lines by default:
 QUIET ?= 1
 TAP ?= tap0
 IPV6_PREFIX ?= 2001:db8::/64
 
+ifeq (native,$(BOARD))
+TERMDEPS += uhcpd-daemon
+
+.PHONY: uhcpd-daemon
+
+uhcpd-daemon: host-tools
+	$(RIOTBASE)/dist/tools/uhcpd/bin/uhcpd $(TAP) $(IPV6_PREFIX) &
+else
 # We override the `make term` command to use ethos
 TERMPROG ?= sudo sh $(RIOTBASE)/dist/tools/ethos/start_network.sh
 TERMFLAGS ?= $(PORT) $(TAP) $(IPV6_PREFIX)
@@ -84,6 +101,7 @@ TERMFLAGS ?= $(PORT) $(TAP) $(IPV6_PREFIX)
 # We depend on the ethos host tools to run the border router, we build them
 # if necessary
 TERMDEPS += host-tools
+endif
 
 include $(RIOTBASE)/Makefile.include
 

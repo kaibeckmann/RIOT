@@ -34,10 +34,6 @@
 #define ENABLE_DEBUG    (0)
 #include "debug.h"
 
-#if ENABLE_DEBUG
-static char addr_str[IPV6_ADDR_MAX_STR_LEN];
-#endif
-
 #define _NETIF_NETAPI_MSG_QUEUE_SIZE    (8)
 
 static gnrc_netif_t _netifs[GNRC_NETIF_NUMOF];
@@ -132,7 +128,7 @@ int gnrc_netif_get_from_netdev(gnrc_netif_t *netif, gnrc_netapi_opt_t *opt)
 
                 res = 0;
                 for (unsigned i = 0;
-                     (res < opt->data_len) && (i < GNRC_NETIF_IPV6_ADDRS_NUMOF);
+                     (res < (int)opt->data_len) && (i < GNRC_NETIF_IPV6_ADDRS_NUMOF);
                      i++) {
                     if (netif->ipv6.addrs_flags[i] != 0) {
                         memcpy(tgt, &netif->ipv6.addrs[i], sizeof(ipv6_addr_t));
@@ -148,7 +144,7 @@ int gnrc_netif_get_from_netdev(gnrc_netif_t *netif, gnrc_netapi_opt_t *opt)
 
                 res = 0;
                 for (unsigned i = 0;
-                     (res < opt->data_len) && (i < GNRC_NETIF_IPV6_ADDRS_NUMOF);
+                     (res < (int)opt->data_len) && (i < GNRC_NETIF_IPV6_ADDRS_NUMOF);
                      i++) {
                     if (netif->ipv6.addrs_flags[i] != 0) {
                         *tgt = netif->ipv6.addrs_flags[i];
@@ -164,7 +160,7 @@ int gnrc_netif_get_from_netdev(gnrc_netif_t *netif, gnrc_netapi_opt_t *opt)
 
                 res = 0;
                 for (unsigned i = 0;
-                     (res < opt->data_len) && (i < GNRC_NETIF_IPV6_GROUPS_NUMOF);
+                     (res < (int)opt->data_len) && (i < GNRC_NETIF_IPV6_GROUPS_NUMOF);
                      i++) {
                     if (!ipv6_addr_is_unspecified(&netif->ipv6.groups[i])) {
                         memcpy(tgt, &netif->ipv6.groups[i], sizeof(ipv6_addr_t));
@@ -243,29 +239,34 @@ int gnrc_netif_set_from_netdev(gnrc_netif_t *netif,
                 uint8_t pfx_len = (uint8_t)(opt->context >> 8U);
                 /* acquire locks a recursive mutex so we are safe calling this
                  * public function */
-                gnrc_netif_ipv6_addr_add(netif, opt->data, pfx_len, flags);
-                res = sizeof(ipv6_addr_t);
+                res = gnrc_netif_ipv6_addr_add_internal(netif, opt->data,
+                                                        pfx_len, flags);
+                if (res >= 0) {
+                    res = sizeof(ipv6_addr_t);
+                }
             }
             break;
         case NETOPT_IPV6_ADDR_REMOVE:
             assert(opt->data_len == sizeof(ipv6_addr_t));
             /* acquire locks a recursive mutex so we are safe calling this
              * public function */
-            gnrc_netif_ipv6_addr_remove(netif, opt->data);
+            gnrc_netif_ipv6_addr_remove_internal(netif, opt->data);
             res = sizeof(ipv6_addr_t);
             break;
         case NETOPT_IPV6_GROUP:
             assert(opt->data_len == sizeof(ipv6_addr_t));
             /* acquire locks a recursive mutex so we are safe calling this
              * public function */
-            gnrc_netif_ipv6_group_join(netif, opt->data);
-            res = sizeof(ipv6_addr_t);
+            res = gnrc_netif_ipv6_group_join_internal(netif, opt->data);
+            if (res >= 0) {
+                res = sizeof(ipv6_addr_t);
+            }
             break;
         case NETOPT_IPV6_GROUP_LEAVE:
             assert(opt->data_len == sizeof(ipv6_addr_t));
             /* acquire locks a recursive mutex so we are safe calling this
              * public function */
-            gnrc_netif_ipv6_group_leave(netif, opt->data);
+            gnrc_netif_ipv6_group_leave_internal(netif, opt->data);
             res = sizeof(ipv6_addr_t);
             break;
         case NETOPT_MAX_PACKET_SIZE:
@@ -449,6 +450,8 @@ void gnrc_netif_release(gnrc_netif_t *netif)
 static inline bool _addr_anycast(const gnrc_netif_t *netif, unsigned idx);
 static int _addr_idx(const gnrc_netif_t *netif, const ipv6_addr_t *addr);
 
+static char addr_str[IPV6_ADDR_MAX_STR_LEN];
+
 /**
  * @brief   Matches an address by prefix to an address on the interface
  *
@@ -522,8 +525,9 @@ static ipv6_addr_t *_src_addr_selection(gnrc_netif_t *netif,
                                         uint8_t *candidate_set);
 static int _group_idx(const gnrc_netif_t *netif, const ipv6_addr_t *addr);
 
-int gnrc_netif_ipv6_addr_add(gnrc_netif_t *netif, const ipv6_addr_t *addr,
-                             unsigned pfx_len, uint8_t flags)
+int gnrc_netif_ipv6_addr_add_internal(gnrc_netif_t *netif,
+                                      const ipv6_addr_t *addr,
+                                      unsigned pfx_len, uint8_t flags)
 {
     unsigned idx = UINT_MAX;
 
@@ -561,16 +565,12 @@ int gnrc_netif_ipv6_addr_add(gnrc_netif_t *netif, const ipv6_addr_t *addr,
     /* TODO: SHOULD delay join between 0 and MAX_RTR_SOLICITATION_DELAY
      * for SLAAC */
     ipv6_addr_set_solicited_nodes(&sol_nodes, addr);
-    res = gnrc_netif_ipv6_group_join(netif, &sol_nodes);
-#if ENABLE_DEBUG
+    res = gnrc_netif_ipv6_group_join_internal(netif, &sol_nodes);
     if (res < 0) {
         DEBUG("nib: Can't join solicited-nodes of %s on interface %u\n",
               ipv6_addr_to_str(addr_str, addr, sizeof(addr_str)),
               netif->pid);
     }
-#else
-    (void)res;
-#endif
 #endif /* GNRC_IPV6_NIB_CONF_ARSM */
     if (_get_state(netif, idx) == GNRC_NETIF_IPV6_ADDRS_FLAGS_STATE_VALID) {
         void *state = NULL;
@@ -599,8 +599,8 @@ int gnrc_netif_ipv6_addr_add(gnrc_netif_t *netif, const ipv6_addr_t *addr,
     return idx;
 }
 
-void gnrc_netif_ipv6_addr_remove(gnrc_netif_t *netif,
-                                 const ipv6_addr_t *addr)
+void gnrc_netif_ipv6_addr_remove_internal(gnrc_netif_t *netif,
+                                          const ipv6_addr_t *addr)
 {
     bool remove_sol_nodes = true;
     ipv6_addr_t sol_nodes;
@@ -625,7 +625,7 @@ void gnrc_netif_ipv6_addr_remove(gnrc_netif_t *netif,
         }
     }
     if (remove_sol_nodes) {
-        gnrc_netif_ipv6_group_leave(netif, &sol_nodes);
+        gnrc_netif_ipv6_group_leave_internal(netif, &sol_nodes);
     }
     gnrc_netif_release(netif);
 }
@@ -715,8 +715,8 @@ gnrc_netif_t *gnrc_netif_get_by_prefix(const ipv6_addr_t *prefix)
     return best_netif;
 }
 
-int gnrc_netif_ipv6_group_join(gnrc_netif_t *netif,
-                               const ipv6_addr_t *addr)
+int gnrc_netif_ipv6_group_join_internal(gnrc_netif_t *netif,
+                                        const ipv6_addr_t *addr)
 {
     unsigned idx = UINT_MAX;
 
@@ -742,8 +742,8 @@ int gnrc_netif_ipv6_group_join(gnrc_netif_t *netif,
     return idx;
 }
 
-void gnrc_netif_ipv6_group_leave(gnrc_netif_t *netif,
-                                 const ipv6_addr_t *addr)
+void gnrc_netif_ipv6_group_leave_internal(gnrc_netif_t *netif,
+                                          const ipv6_addr_t *addr)
 {
     int idx;
 
@@ -769,6 +769,21 @@ int gnrc_netif_ipv6_group_idx(gnrc_netif_t *netif, const ipv6_addr_t *addr)
     return idx;
 }
 
+#if defined(MODULE_NETDEV_IEEE802154) || defined(MODULE_CC110X) || \
+    defined(MODULE_NRFMIN)
+static void _create_iid_from_short(const gnrc_netif_t *netif, eui64_t *eui64)
+{
+    const unsigned offset = sizeof(eui64_t) - netif->l2addr_len;
+
+    assert(netif->l2addr_len <= 3);
+    memset(eui64->uint8, 0, sizeof(eui64->uint8));
+    eui64->uint8[3] = 0xff;
+    eui64->uint8[4] = 0xfe;
+    memcpy(&eui64->uint8[offset], netif->l2addr, netif->l2addr_len);
+}
+#endif /* defined(MODULE_NETDEV_IEEE802154) || defined(MODULE_CC110X) ||
+        * defined(MODULE_NRFMIN) */
+
 int gnrc_netif_ipv6_get_iid(gnrc_netif_t *netif, eui64_t *eui64)
 {
 #if GNRC_NETIF_L2ADDR_MAXLEN > 0
@@ -791,14 +806,7 @@ int gnrc_netif_ipv6_get_iid(gnrc_netif_t *netif, eui64_t *eui64)
             case NETDEV_TYPE_IEEE802154:
                 switch (netif->l2addr_len) {
                     case IEEE802154_SHORT_ADDRESS_LEN:
-                        eui64->uint8[0] = 0x0;
-                        eui64->uint8[1] = 0x0;
-                        eui64->uint8[2] = 0x0;
-                        eui64->uint8[3] = 0xff;
-                        eui64->uint8[4] = 0xfe;
-                        eui64->uint8[5] = 0x0;
-                        eui64->uint8[6] = netif->l2addr[0];
-                        eui64->uint8[7] = netif->l2addr[1];
+                        _create_iid_from_short(netif, eui64);
                         return 0;
                     case IEEE802154_LONG_ADDRESS_LEN:
                         memcpy(eui64, netif->l2addr, sizeof(eui64_t));
@@ -811,17 +819,10 @@ int gnrc_netif_ipv6_get_iid(gnrc_netif_t *netif, eui64_t *eui64)
                 }
                 break;
 #endif
-#ifdef MODULE_CC110X
+#if defined(MODULE_CC110X) || defined(MODULE_NRFMIN)
             case NETDEV_TYPE_CC110X:
-                assert(netif->l2addr_len == 1U);
-                eui64->uint8[0] = 0x0;
-                eui64->uint8[1] = 0x0;
-                eui64->uint8[2] = 0x0;
-                eui64->uint8[3] = 0xff;
-                eui64->uint8[4] = 0xfe;
-                eui64->uint8[5] = 0x0;
-                eui64->uint8[6] = 0x0;
-                eui64->uint8[7] = netif->l2addr[0];
+            case NETDEV_TYPE_NRFMIN:
+                _create_iid_from_short(netif, eui64);
                 return 0;
 #endif
             default:
@@ -873,13 +874,12 @@ static unsigned _match(const gnrc_netif_t *netif, const ipv6_addr_t *addr,
             best_match = match;
         }
     }
-#if ENABLE_DEBUG
     if (*idx >= 0) {
         DEBUG("gnrc_netif: Found %s on interface %" PRIkernel_pid " matching ",
               ipv6_addr_to_str(addr_str, &netif->ipv6.addrs[*idx],
                                sizeof(addr_str)),
               netif->pid);
-        DEBUG("%s by %" PRIu8 " bits (used as source address = %s)\n",
+        DEBUG("%s by %u bits (used as source address = %s)\n",
               ipv6_addr_to_str(addr_str, addr, sizeof(addr_str)),
               best_match,
               (filter != NULL) ? "true" : "false");
@@ -891,7 +891,6 @@ static unsigned _match(const gnrc_netif_t *netif, const ipv6_addr_t *addr,
               ipv6_addr_to_str(addr_str, addr, sizeof(addr_str)),
               (filter != NULL) ? "true" : "false");
     }
-#endif
     return best_match;
 }
 
@@ -1100,6 +1099,7 @@ static int _group_idx(const gnrc_netif_t *netif, const ipv6_addr_t *addr)
 }
 #endif  /* MODULE_GNRC_IPV6 */
 
+#if (GNRC_NETIF_NUMOF > 1) || !defined(MODULE_GNRC_SIXLOWPAN)
 bool gnrc_netif_is_6ln(const gnrc_netif_t *netif)
 {
     switch (netif->device_type) {
@@ -1111,6 +1111,7 @@ bool gnrc_netif_is_6ln(const gnrc_netif_t *netif)
             return false;
     }
 }
+#endif  /* (GNRC_NETIF_NUMOF > 1) || !defined(MODULE_GNRC_SIXLOWPAN) */
 
 static void _update_l2addr_from_dev(gnrc_netif_t *netif)
 {
@@ -1156,8 +1157,9 @@ static void _init_from_device(gnrc_netif_t *netif)
     assert(res == sizeof(tmp));
     netif->device_type = (uint8_t)tmp;
     switch (netif->device_type) {
-#ifdef MODULE_NETDEV_IEEE802154
+#if defined(MODULE_NETDEV_IEEE802154) || defined(MODULE_NRFMIN)
         case NETDEV_TYPE_IEEE802154:
+        case NETDEV_TYPE_NRFMIN:
 #ifdef MODULE_GNRC_SIXLOWPAN_IPHC
             netif->flags |= GNRC_NETIF_FLAGS_6LO_HC;
 #endif
@@ -1240,12 +1242,10 @@ static void *_gnrc_netif_thread(void *args)
             case GNRC_NETAPI_MSG_TYPE_SND:
                 DEBUG("gnrc_netif: GNRC_NETDEV_MSG_TYPE_SND received\n");
                 res = netif->ops->send(netif, msg.content.ptr);
-#if ENABLE_DEBUG
                 if (res < 0) {
                     DEBUG("gnrc_netif: error sending packet %p (code: %u)\n",
                           msg.content.ptr, res);
                 }
-#endif
                 break;
             case GNRC_NETAPI_MSG_TYPE_SET:
                 opt = msg.content.ptr;
@@ -1283,12 +1283,10 @@ static void *_gnrc_netif_thread(void *args)
                           "netif->ops->msg_handler()\n", msg.type);
                     netif->ops->msg_handler(netif, &msg);
                 }
-#if ENABLE_DEBUG
                 else {
                     DEBUG("gnrc_netif: unknown message type 0x%04x"
                           "(no message handler defined)\n", msg.type);
                 }
-#endif
                 break;
         }
     }

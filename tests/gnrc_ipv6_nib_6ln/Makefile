@@ -1,5 +1,3 @@
-# name of your application
-APPLICATION = gnrc_ipv6_nib_6ln
 include ../Makefile.tests_common
 
 BOARD_INSUFFICIENT_MEMORY := chronos nucleo-f030 nucleo-l053 nucleo32-f031 \
@@ -15,7 +13,6 @@ USEMODULE += embunit
 USEMODULE += netdev_ieee802154
 USEMODULE += netdev_test
 
-CFLAGS += -DDEVELHELP
 CFLAGS += -DGNRC_NETTYPE_NDP=GNRC_NETTYPE_TEST
 CFLAGS += -DGNRC_PKTBUF_SIZE=512
 CFLAGS += -DTEST_SUITES

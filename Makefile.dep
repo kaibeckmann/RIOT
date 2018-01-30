@@ -24,6 +24,14 @@ ifneq (,$(filter gnrc_mac,$(USEMODULE)))
   USEMODULE += csma_sender
 endif
 
+ifneq (,$(filter gnrc_gomach,$(USEMODULE)))
+  USEMODULE += gnrc_netif
+  USEMODULE += random
+  USEMODULE += xtimer
+  USEMODULE += gnrc_mac
+  FEATURES_REQUIRED += periph_rtt
+endif
+
 ifneq (,$(filter nhdp,$(USEMODULE)))
   USEMODULE += sock_udp
   USEMODULE += xtimer
@@ -115,7 +123,7 @@ ifneq (,$(filter trickle,$(USEMODULE)))
   USEMODULE += xtimer
 endif
 
-ifneq (,$(filter ieee802154,$(USEMODULE)))
+ifneq (,$(filter ieee802154 nrfmin,$(USEMODULE)))
   ifneq (,$(filter gnrc_ipv6, $(USEMODULE)))
     USEMODULE += gnrc_sixlowpan
   endif
@@ -494,10 +502,6 @@ ifneq (,$(filter gnrc_pktbuf_%, $(USEMODULE)))
   USEMODULE += gnrc_pktbuf # make MODULE_GNRC_PKTBUF macro available for all implementations
 endif
 
-ifneq (,$(filter gnrc_netdev,$(USEMODULE)))
-  USEMODULE += netopt
-endif
-
 ifneq (,$(filter netstats_%, $(USEMODULE)))
   USEMODULE += netstats
 endif
@@ -642,18 +646,37 @@ ifneq (,$(filter spiffs,$(USEMODULE)))
   USEMODULE += spiffs_fs
   USEMODULE += mtd
 endif
+ifneq (,$(filter littlefs,$(USEMODULE)))
+  USEPKG += littlefs
+  USEMODULE += vfs
+  USEMODULE += littlefs_fs
+  USEMODULE += mtd
+endif
 
 ifneq (,$(filter l2filter_%,$(USEMODULE)))
   USEMODULE += l2filter
 endif
 
 ifneq (,$(filter gcoap,$(USEMODULE)))
-USEPKG += nanocoap
-USEMODULE += gnrc_sock_udp
+  USEMODULE += nanocoap
+  USEMODULE += gnrc_sock_udp
 endif
 
 ifneq (,$(filter luid,$(USEMODULE)))
   FEATURES_OPTIONAL += periph_cpuid
+endif
+
+ifneq (,$(filter nanocoap_%,$(USEMODULE)))
+  USEMODULE += nanocoap
+endif
+
+ifneq (,$(filter ccn-lite,$(USEPKG)))
+  USEMODULE += ccn-lite-utils
+endif
+
+ifneq (,$(filter fatfs_vfs,$(USEMODULE)))
+  USEPKG += fatfs
+  USEMODULE += vfs
 endif
 
 # always select gpio (until explicit dependencies are sorted out)

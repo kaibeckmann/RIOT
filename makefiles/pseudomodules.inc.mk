@@ -2,6 +2,7 @@ PSEUDOMODULES += auto_init_gnrc_rpl
 PSEUDOMODULES += can_mbox
 PSEUDOMODULES += can_pm
 PSEUDOMODULES += can_raw
+PSEUDOMODULES += ccn-lite-utils
 PSEUDOMODULES += cbor_ctime
 PSEUDOMODULES += cbor_float
 PSEUDOMODULES += cbor_semantic_tagging
@@ -30,8 +31,10 @@ PSEUDOMODULES += gnrc_sock_check_reuse
 PSEUDOMODULES += gnrc_txtsnd
 PSEUDOMODULES += l2filter_blacklist
 PSEUDOMODULES += l2filter_whitelist
+PSEUDOMODULES += lis2dh12_spi
 PSEUDOMODULES += log
 PSEUDOMODULES += log_printfnoformat
+PSEUDOMODULES += lora
 PSEUDOMODULES += lwip_arp
 PSEUDOMODULES += lwip_autoip
 PSEUDOMODULES += lwip_dhcp
@@ -46,6 +49,7 @@ PSEUDOMODULES += lwip_tcp
 PSEUDOMODULES += lwip_udp
 PSEUDOMODULES += lwip_udplite
 PSEUDOMODULES += mpu_stack_guard
+PSEUDOMODULES += nanocoap_%
 PSEUDOMODULES += netdev_default
 PSEUDOMODULES += netif
 PSEUDOMODULES += netstats
@@ -94,6 +98,10 @@ PSEUDOMODULES += si7006
 PSEUDOMODULES += si7013
 PSEUDOMODULES += si7020
 PSEUDOMODULES += si7021
+
+# include variants of RN2XX3 drivers as pseudo modules
+PSEUDOMODULES += rn2483
+PSEUDOMODULES += rn2903
 
 # add all pseudo random number generator variants as pseudomodules
 PSEUDOMODULES += prng_%

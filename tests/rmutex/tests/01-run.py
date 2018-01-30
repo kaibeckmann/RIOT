@@ -11,9 +11,6 @@
 import os
 import sys
 
-sys.path.append(os.path.join(os.environ['RIOTBASE'], 'dist/tools/testrunner'))
-import testrunner
-
 thread_prio = {
         3:  6,
         4:  4,
@@ -30,8 +27,10 @@ lock_depth = {
         7:  5
         }
 
+
 def thread_prio_sort(x):
     return thread_prio.get(x)*1000 + x
+
 
 def testfunc(child):
     for k in thread_prio.keys():
@@ -44,5 +43,8 @@ def testfunc(child):
             child.expect(u"T%i \(prio %i, depth %i\): locked rmutex now" %
                          (T, thread_prio[T], depth))
 
+
 if __name__ == "__main__":
-    sys.exit(testrunner.run(testfunc))
+    sys.path.append(os.path.join(os.environ['RIOTBASE'], 'dist/tools/testrunner'))
+    from testrunner import run
+    sys.exit(run(testfunc))

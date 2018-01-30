@@ -1,10 +1,11 @@
-APPLICATION = unittests
+DEVELHELP ?= 0
 include ../Makefile.tests_common
 
 BOARD_INSUFFICIENT_MEMORY := airfy-beacon \
                              arduino-duemilanove \
                              arduino-mega2560 \
                              arduino-mkr1000 \
+                             arduino-mkrfox1200 \
                              arduino-mkrzero \
                              arduino-uno \
                              arduino-zero \
@@ -58,6 +59,7 @@ BOARD_INSUFFICIENT_MEMORY := airfy-beacon \
                              spark-core \
                              stm32f0discovery \
                              stm32f3discovery \
+                             teensy31 \
                              telosb \
                              waspmote-pro \
                              wsn430-v1_3b \
@@ -82,6 +84,7 @@ DISABLE_TEST_FOR_ARM7 := tests-relic tests-cpp_%
 ARM_CORTEX_M_BOARDS := airfy-beacon \
                        arduino-due \
                        arduino-mkr1000 \
+                       arduino-mkrfox1200 \
                        arduino-mkrzero \
                        arduino-zero \
                        b-l072z-lrwan1 \
@@ -108,7 +111,7 @@ ARM_CORTEX_M_BOARDS := airfy-beacon \
                        nrf52840dk \
                        nrf52dk \
                        nrf6310 \
-                       nucleo144-f207 \
+                       nucleo-f207zg \
                        nucleo144-f303 \
                        nucleo144-f412 \
                        nucleo144-f413 \
@@ -172,7 +175,6 @@ DISABLE_TEST_FOR_AVR := tests-relic tests-cpp_%
 
 MSP430_BOARDS := chronos \
                  msb-430 \
-                 msb-430-common \
                  msb-430h \
                  telosb \
                  wsn430-v1_3b \

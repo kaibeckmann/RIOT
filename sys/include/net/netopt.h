@@ -11,7 +11,7 @@
  * @defgroup    net_netopt   Configuration options for network APIs
  * @ingroup     net
  * @brief       List of available configuration options for the
- *              @ref net_gnrc_netdev and the @ref net_gnrc_netapi
+ *              @ref drivers_netdev_api and the @ref net_gnrc_netapi
  * @{
  *
  * @file
@@ -376,6 +376,17 @@ typedef enum {
     NETOPT_INTEGRITY_CHECK,
 
     /**
+     * @brief   Get/Set the channel center frequency.
+     *
+     * Values are retrieved/passed as uint32_t in host byte order.
+     *
+     * For example, with LoRa, this corresponds to the center frequency of
+     * each channel (867300000, etc) for a given frequency band
+     * (868, 915, etc).
+     */
+    NETOPT_CHANNEL_FREQUENCY,
+
+    /**
      * @brief   Enable/disable channel hopping.
      */
     NETOPT_CHANNEL_HOP,
@@ -405,11 +416,6 @@ typedef enum {
      * Values are retrieved/passed as uint32_t in host byte order.
      */
     NETOPT_TX_TIMEOUT,
-
-    /**
-     * @brief   Get/Set the radio modem type as uint8_t.
-     */
-    NETOPT_DEVICE_MODE,
 
     /**
      * @brief   Get/Set the radio modulation bandwidth as uint8_t.

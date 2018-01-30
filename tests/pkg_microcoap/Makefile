@@ -1,4 +1,3 @@
-APPLICATION = pkg_microcoap
 include ../Makefile.tests_common
 
 BOARD_INSUFFICIENT_MEMORY := chronos msb-430 msb-430h nucleo32-f031 nucleo32-f042 \
@@ -22,11 +21,6 @@ USEPKG += microcoap
 
 # include this for printing IP addresses
 USEMODULE += shell_commands
-
-# Comment this out to disable code in RIOT that does safety checking
-# which is not needed in a production environment but helps in the
-# development process:
-#CFLAGS += -DDEVELHELP
 
 # Use different settings when compiling for one of the following (low-memory)
 # boards
