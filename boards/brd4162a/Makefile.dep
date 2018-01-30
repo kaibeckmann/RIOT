@@ -2,7 +2,7 @@ ifneq (,$(filter saul_default,$(USEMODULE)))
     USEMODULE += saul_gpio
     USEMODULE += si70xx
 endif
-ifneq (,$(filter gnrc_netdev_default netdev_default,$(USEMODULE)))
+ifneq (,$(filter netdev_default gnrc_netdev_default,$(USEMODULE)))
     USEMODULE += rail
 endif 
 
