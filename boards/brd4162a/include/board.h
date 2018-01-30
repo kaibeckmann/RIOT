@@ -30,8 +30,6 @@
 #include "periph/gpio.h"
 #include "periph/spi.h"
 
-#include "radio.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

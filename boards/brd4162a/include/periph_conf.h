@@ -40,13 +40,6 @@ extern "C" {
  * @name    Clock configuration
  * @{
  */
-#ifndef CMU_HFXOINIT
-#define CMU_HFXOINIT        CMU_HFXOINIT_DEFAULT
-#endif
-#ifndef CMU_LFXOINIT
-#define CMU_LFXOINIT        CMU_LFXOINIT_DEFAULT
-#endif
-
 #ifndef CLOCK_HF
 #define CLOCK_HF            cmuSelect_HFXO
 #endif
@@ -62,93 +55,11 @@ extern "C" {
 #ifndef CLOCK_LFE
 #define CLOCK_LFE           cmuSelect_LFRCO
 #endif
-/** @} */
-
-/**
- * @name    EMU configuration
- * @{
- */
-#ifndef EMU_DCDCINIT
-#define EMU_DCDCINIT         EMU_DCDCINIT_DEFAULT
-#endif
-#ifndef EMU_EM23INIT
-#define EMU_EM23INIT         EMU_EM23INIT_DEFAULT
-#endif
-#ifndef EMU_EM4INIT
-#define EMU_EM4INIT         EMU_EM4INIT_DEFAULT
-#endif
-/** @} */
-
-#if 0
-#define CLOCK_HFXO_INIT                                                  \
-  {                                                                        \
-    false,      /* Low-noise mode for EFR32 */                             \
-    false,      /* Disable auto-start on EM0/1 entry */                    \
-    false,      /* Disable auto-select on EM0/1 entry */                   \
-    false,      /* Disable auto-start and select on RAC wakeup */          \
-    _CMU_HFXOSTARTUPCTRL_CTUNE_DEFAULT,                                    \
-    0x142,      /* Steady-state CTUNE for WSTK boards without load caps */ \
-    _CMU_HFXOSTEADYSTATECTRL_REGISH_DEFAULT,                               \
-    0x20,       /* Matching errata fix in CHIP_Init() */                   \
-    0x7,        /* Recommended steady-state osc core bias current */       \
-    0x6,        /* Recommended peak detection threshold */                 \
-    _CMU_HFXOTIMEOUTCTRL_SHUNTOPTTIMEOUT_DEFAULT,                          \
-    0xA,        /* Recommended peak detection timeout  */                  \
-    0x4,        /* Recommended steady timeout */                           \
-    _CMU_HFXOTIMEOUTCTRL_STARTUPTIMEOUT_DEFAULT,                           \
-    cmuOscMode_Crystal,                                                    \
-  }
-
-#if !defined(CMU_HFXOINIT_WSTK_DEFAULT)
-#define CMU_HFXOINIT_WSTK_DEFAULT                                          \
-  {                                                                        \
-    false,      /* Low-noise mode for EFR32 */                             \
-    false,      /* Disable auto-start on EM0/1 entry */                    \
-    false,      /* Disable auto-select on EM0/1 entry */                   \
-    false,      /* Disable auto-start and select on RAC wakeup */          \
-    _CMU_HFXOSTARTUPCTRL_CTUNE_DEFAULT,                                    \
-    0x142,      /* Steady-state CTUNE for WSTK boards without load caps */ \
-    _CMU_HFXOSTEADYSTATECTRL_REGISH_DEFAULT,                               \
-    _CMU_HFXOSTARTUPCTRL_IBTRIMXOCORE_DEFAULT,                             \
-    0x7,        /* Recommended steady-state osc core bias current */       \
-    0x6,        /* Recommended peak detection threshold */                 \
-    _CMU_HFXOTIMEOUTCTRL_SHUNTOPTTIMEOUT_DEFAULT,                          \
-    0xA,        /* Recommended peak detection timeout  */                  \
-    0x4,        /* Recommended steady timeout */                           \
-    _CMU_HFXOTIMEOUTCTRL_STARTUPTIMEOUT_DEFAULT,                           \
-    cmuOscMode_Crystal,                                                    \
-  }
-#endif
-
-#endif
-
-#if 0
-#if !defined(EMU_DCDCINIT_WSTK_DEFAULT)
-/* Use emlib defaults */
-#define EMU_DCDCINIT_WSTK_DEFAULT EMU_DCDCINIT_DEFAULT
-#endif
-#endif
-
+#ifndef CLOCK_HFXO_FREQ
 #define CLOCK_HFXO_FREQ 38400000UL
+#endif
+#ifndef CLOCK_LFXO_FREQ
 #define CLOCK_LFXO_FREQ 32768UL
-
-
-
-
-/** @} */
-
-/**
- * @name    EMU configuration
- * @{
- */
-#ifndef EMU_DCDCINIT
-#define EMU_DCDCINIT         EMU_DCDCINIT_DEFAULT
-#endif
-#ifndef EMU_EM23INIT
-#define EMU_EM23INIT         EMU_EM23INIT_DEFAULT
-#endif
-#ifndef EMU_EM4INIT
-#define EMU_EM4INIT         EMU_EM4INIT_DEFAULT
 #endif
 /** @} */
 
