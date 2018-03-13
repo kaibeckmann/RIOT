@@ -45,30 +45,6 @@ extern "C" {
 /** @} */
 
 /**
- * @name    Enable Advanced Energy Monitor
- *
- * When enabled, additional CPU statistics are available via SWO.
- * @{
- */
-#ifndef AEM_ENABLED
-#define AEM_ENABLED         (1)
-#endif
-/** @} */
-
-/**
- * @name    Board controller configuration
- *
- * Define the GPIO pin to enable the BC, to allow serial communication
- * via the USB port.
- * @{
- */
-#ifndef BC_ENABLED
-#define BC_ENABLED          (1)
-#endif
-#define BC_PIN              GPIO_PIN(PA, 5)
-/** @} */
-
-/**
  * @name    Push button pin definitions
  * @{
  */
@@ -95,6 +71,37 @@ extern "C" {
 #define LED1_OFF            gpio_clear(LED1_PIN)
 #define LED1_TOGGLE         gpio_toggle(LED1_PIN)
 /** @} */
+
+
+/**
+ * @name    Board controller configuration
+ *
+ * Define the GPIO pin to enable the BC, to allow serial communication
+ * via the USB port.
+ * @{
+ */
+#define BC_PIN              GPIO_PIN(PA, 5)
+/** @} */
+
+/**
+ * @name    Temperature sensor configuration
+ *
+ * Connection to the on-board temperature/humidity sensor (Si7021).
+ * @{
+ */
+#ifndef SI7021_ENABLED
+#define SI7021_ENABLED          (1)
+#endif
+#define SI7021_I2C              I2C_DEV(0)
+
+#define SI7021_ENABLE_PIN       GPIO_PIN(PB,10)
+
+#define SI70XX_PARAM_I2C_DEV    SI7021_I2C
+/** @} */
+
+
+
+
 
 /**
  * @brief   Initialize the board (GPIO, sensors, clocks).

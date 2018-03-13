@@ -6,9 +6,19 @@ export CPU_MODEL = efr32mg12p332f1024gl125
 PORT_LINUX ?= /dev/ttyACM0
 PORT_DARWIN ?= $(firstword $(sort $(wildcard /dev/tty.usbmodem*)))
 
-# setup JLink for flashing
-export JLINK_DEVICE := $(CPU_MODEL)
-include $(RIOTMAKE)/tools/jlink.inc.mk
-
 # setup serial terminal
 include $(RIOTMAKE)/tools/serial.inc.mk
+
+# setup JLink for flashing and debugging
+export JLINK_DEVICE := $(CPU_MODEL)
+export DBG := arm-none-eabi-gdb
+include $(RIOTMAKE)/tools/jlink.inc.mk
+
+# add board common drivers
+USEMODULE += boards_common_silabs
+# todo sharp display
+USEMODULE += silabs_bc
+USEMODULE += silabs_aem
+
+# include board common
+include $(RIOTBOARD)/common/silabs/Makefile.include
