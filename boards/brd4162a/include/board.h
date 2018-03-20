@@ -72,7 +72,6 @@ extern "C" {
 #define LED1_TOGGLE         gpio_toggle(LED1_PIN)
 /** @} */
 
-
 /**
  * @name    Board controller configuration
  *
@@ -98,10 +97,6 @@ extern "C" {
 
 #define SI70XX_PARAM_I2C_DEV    SI7021_I2C
 /** @} */
-
-
-
-
 
 /**
  * @brief   Initialize the board (GPIO, sensors, clocks).

@@ -34,10 +34,10 @@ void board_init(void)
     /* perform common board initialization */
     board_common_init();
 
+#ifdef MODULE_SI7021
     /* enable the SI7021 i2c sensor */
-    /* todo possible to enable / disable in pm? */
     gpio_init(SI7021_ENABLE_PIN, GPIO_OUT);
     gpio_set(SI7021_ENABLE_PIN); 
-
+#endif
 
 }

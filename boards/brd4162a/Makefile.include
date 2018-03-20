@@ -16,9 +16,10 @@ include $(RIOTMAKE)/tools/jlink.inc.mk
 
 # add board common drivers
 USEMODULE += boards_common_silabs
-# todo sharp display
+
 USEMODULE += silabs_bc
 USEMODULE += silabs_aem
+
 
 # include board common
 include $(RIOTBOARD)/common/silabs/Makefile.include
