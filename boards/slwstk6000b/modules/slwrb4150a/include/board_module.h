@@ -50,7 +50,7 @@ extern "C" {
 #define MODULE_PIN_F14      GPIO_PIN(PD, 15)
 #define MODULE_PIN_F15      GPIO_PIN(PC, 8)
 #define MODULE_PIN_F16      GPIO_PIN(PC, 6)
-#define MODULE_PIN_F17      GPIO_PIN(PD, 15)
+#define MODULE_PIN_F17      GPIO_PIN(PD, 14)
 #define MODULE_PIN_F18      GPIO_PIN(PD, 13)
 #define MODULE_PIN_F19      GPIO_PIN(PB, 13)
 #define MODULE_PIN_F20      GPIO_PIN(PB, 12)
