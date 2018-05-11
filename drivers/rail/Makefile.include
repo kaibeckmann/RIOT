@@ -1,0 +1,21 @@
+
+RAIL_LIB_VERSION=1.1
+
+#RAIL_SDK_DIR  = $(RIOTBASE)/pkg/gecko-sdk/sdk/
+RAIL_SDK_SRCDIR = $(PKGDIRBASE)/gecko_sdk/dist/radio/rail_lib_v$(RAIL_LIB_VERSION)
+
+RAIL_INCLUDES += -I$(RAIL_SDK_SRCDIR)/common
+RAIL_INCLUDES += -I$(RAIL_SDK_SRCDIR)/protocol
+RAIL_INCLUDES += -I$(RAIL_SDK_SRCDIR)/chip/efr32
+RAIL_INCLUDES += -I$(RAIL_SDK_SRCDIR)/chip/efr32/rf/common/cortex
+
+#RAIL_INCLUDES += -I$(RAIL_SDK_DIR)/hardware/kit/common/bsp/
+# if thunderbird
+#RAIL_INCLUDES += -I$(RAIL_SDK_DIR)/hardware/kit/EFR32MG1_BRD4160A/config/
+
+
+export RAIL_LIB_VERSION
+
+export INCLUDES += $(RAIL_INCLUDES)
+
+export RAIL_SDK_SRCDIR
