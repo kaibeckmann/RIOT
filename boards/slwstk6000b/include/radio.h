@@ -35,31 +35,34 @@ extern "C" {
 // posible values, 2400, 868, 915
 #define RAIL_RADIO_BAND 2400
 
+// voltage of the radio PA in mV
+// depends on the module TODO
+#define RAIL_RADIO_PA_VOLTAGE 1800
 
 // Packet Trace interface
-#ifndef PTI_ENABLED
-#define PTI_ENABLED     (1)
+#ifndef RAIL_PTI_ENABLED
+#define RAIL_PTI_ENABLED     (1)
 #endif
 
 // c&p from gecko-sdk BSP for EFR32MG1_BRD4154A
-#if !defined(RADIO_PTI_INIT)
-#define RADIO_PTI_INIT                                                     \
+#if !defined(RAIL_PTI_CONFIG)
+#define RAIL_PTI_CONFIG                                                    \
   {                                                                        \
-    RADIO_PTI_MODE_UART,    /* Simplest output mode is UART mode */        \
-    1600000,                /* Choose 1.6 MHz for best compatibility */    \
-    6,                      /* WSTK uses location 6 for DOUT */            \
-    gpioPortB,              /* Get the port for this loc */                \
-    12,                     /* Get the pin, location should match above */ \
-    0,                      /* DCLK not used for UART mode */              \
-    0,                      /* DCLK not used for UART mode */              \
-    0,                      /* DCLK not used for UART mode */              \
+    RAIL_PTI_MODE_UART,     /* Only supported output mode for the WSTK*/   \
+    1600000,                /* Choose 1.6 MHz for best the WSTK */         \
+    6,                      /* WSTK uses location 6 for DOUT PB12 */       \
+    gpioPortB,              /* FRC_DOUT#6 is PB12 */                       \
+    12,                     /* FRC_DOUT#6 is PB12 */                       \
+    6,                      /* UNUSED IN UART MODE */                      \
+    gpioPortB,              /* UNUSED IN UART MODE */                      \
+    11,                     /* UNUSED IN UART MODE */                      \
     6,                      /* WSTK uses location 6 for DFRAME */          \
-    gpioPortB,              /* Get the port for this loc */                \
-    13,                     /* Get the pin, location should match above */ \
+    gpioPortB,              /* RC_DOUT#6 is PB13 */                        \
+    13,                     /* RC_DOUT#6 is PB13 */                        \
   }
 #endif
 
-
+    
 #ifdef __cplusplus
 }
 #endif

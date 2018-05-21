@@ -6,6 +6,7 @@
 #include "rail.h"
 #include "em_core.h"
 
+#include "iolist.h"
 
 #include "net/netdev.h"
 #include "net/netopt.h"
@@ -14,6 +15,8 @@
 #include "xtimer.h"
 
 #include "errno.h"
+
+#include "radio.h"
 
 #include "rail_drv.h"
 #include "rail_netdev.h"
@@ -28,7 +31,7 @@
 #include "debug.h"
 
 // local declaration of driver methodes
-static int _send(netdev_t* netdev, const struct iovec* vector, unsigned count);
+static int _send(netdev_t* netdev, const iolist_t *iolist);
 static int _recv(netdev_t* netdev, void* buf, size_t len, void* info);
 static int _init(netdev_t* netdev);
 static void _isr(netdev_t* netdev);
@@ -102,7 +105,7 @@ static int _init(netdev_t* netdev) {
 }
 
 
-static int _send(netdev_t* netdev, const struct iovec* vector, unsigned count) 
+static int _send(netdev_t* netdev, const iolist_t *iolist)
 {
     DEBUG("rail_netdev->send called\n");
     
@@ -120,19 +123,24 @@ static int _send(netdev_t* netdev, const struct iovec* vector, unsigned count)
     
     // prepare frame, cpy header and payload
     size_t len = 1; // start with 1, first byte have to be the length
-    const struct iovec *ptr = vector;
-    for (unsigned int i = 0; i < count; i++, ptr++) {
-    //    DEBUG("add header %d - len %d sum leng %d \n", i, ptr->iov_len, len);
+    for (const iolist_t *iol = iolist; iol; iol = iol->iol_next) {
+        /* current packet data + FCS too long */
+        if ((len + iol->iol_len + 2) > IEEE802154_FRAME_LEN_MAX) {
+            DEBUG("[rail] error: packet too large (%u byte) to be send\n",
+                  (unsigned)len + 2);
+            return -EOVERFLOW;
+        }
 #ifdef MODULE_NETSTATS_L2
         netdev->stats.tx_bytes += len;
 #endif
-        memcpy(frame+len, ptr->iov_base, ptr->iov_len);
-        len += ptr->iov_len;
+        memcpy(frame+len, iol->iol_base, iol->iol_len);
+        len += iol->iol_len;
+
     }
     
-    // set frame length to first byte (I wonder where it is documented?)
-    frame[0] = (uint8_t) len +1;//-1; // todo check if -1 is ok // ggf. +2 for crc?
+
     
+
     /*
     for (int j = 0; j < 50; j++)
     {
@@ -146,118 +154,108 @@ static int _send(netdev_t* netdev, const struct iovec* vector, unsigned count)
 
 //    (void)foo;
     
-    RAIL_TxData_t txData;
-    
-    txData.dataPtr = frame;
-    txData.dataLength = len + 1;
-    
-    // config tx options
-    RAIL_TxOptions_t txOption;
-    
-    // check if ack req
-    if (((netdev_ieee802154_t *)netdev)->flags & NETDEV_IEEE802154_ACK_REQ) {
-        txOption.waitForAck =  true;
-        DEBUG("tx option auto ack\n");
-    } else {
-        txOption.waitForAck =  false;
-        DEBUG("tx option NO auto ack\n");
-    }
-    txOption.removeCrc = false;  // transceiver should calc and add cnc
-    txOption.syncWordId = 0;    // dunno what it does ...
-    
- //   CORE_DECLARE_IRQ_STATE; // macht keinen unterschied
- //   CORE_ENTER_CRITICAL();
-    
-    
-  //   RAIL_RfIdle();
- //    RAIL_RxStart(dev->channel);
-     
-    // tx prepare
-    int ret = rail_tx_prepare(dev);
-    if (ret != 0) {
-        return ret;
-    }
-//    DEBUG("tx prepared\n");
-    // or in tx_prepare?
-   
-    RAIL_RfIdleExt(RAIL_IDLE, true);
-//    DEBUG("RF changed to IDLE\n");
-    
-  //  RAIL_CalValues_t calValues;
-  //   calValues.imageRejection = RAIL_CAL_INVALID_VALUE;
-  //  RAIL_CalStart(&calValues, RAIL_CAL_ALL_PENDING, true);
-    
-  //  RAIL_RfIdleExt(RAIL_IDLE, true);
-  //  RAIL_RfIdle();
-  //  DEBUG("RF changed to IDLE\n");
-    
-    uint8_t r_ret = RAIL_TxDataLoad(&txData);
-    
-    if (r_ret != RAIL_STATUS_NO_ERROR) {
-        // error
-        LOG_ERROR("Can't load data to tx frame\n");
-        return -1;
-    }
-    DEBUG("TX Data loaded\n");
-    
-   
-    (void)txOption;
-    (void)csmaConfig;
-    (void)txData;
-    
-  
-    
-    r_ret = RAIL_TxStartWithOptions(dev->netdev.chan, // channel to transmit on
-                                    &txOption,      // option for transmit
-                                    RAIL_CcaCsma,   // function to call before transmitting -> use csma
-                                    (void*) &csmaConfig);    // csma std config for 802.15.4
-    
-    if (r_ret != RAIL_STATUS_NO_ERROR) {
-        LOG_ERROR("Can't start transmit error code %u \n", r_ret);
-        return -1;
-    }
-    DEBUG("Started transmit\n");
-    //
-  //  xtimer_ticks32_t tt = {100000};
-  //  xtimer_spin(tt);
-   // DEBUG("sleep transmit\n");
-    
-    // TODO symetric blocking call. should be stated by callback
-    while (RAIL_RfStateGet() == RAIL_RF_STATE_TX);
-  //  CORE_EXIT_CRITICAL();
- //   ps();
-    // set state
-  //  dev->state = RAIL_TRANSCEIVER_STATE_TX;
-    
-    // 
-    
+   int ret = rail_transmit_frame(dev, frame, len);
+
+   if (ret != 0) {
+       LOG_ERROR("Can not send data\n");
+       return ret;
+   }
     
     return (int) len-1;
 }
 
 static int _recv(netdev_t* netdev, void* buf, size_t len, void* info)
 {
+
     DEBUG("rail_netdev->recv called\n");
 
-    rail_t* rail_dev = (rail_t*) netdev;
+    rail_t* dev = (rail_t*) netdev;
 
-    // cases:
+    RAIL_RxPacketHandle_t   packHandle;
+    RAIL_RxPacketInfo_t     packInfo;
+    RAIL_RxPacketDetails_t  packDetails;
+    RAIL_Status_t           ret;
+
+    // get infos about the received package
+    // TODO either store the packethandle or deceide if oldest or newest is the
+    // right package ...
+    // here dev->lastRxPacketHandle is only set in the _recv function, because
+    // upper stack layer are calling this function several times for one receive
+    // ...
+
+    if (dev->lastRxPacketHandle == RAIL_RX_PACKET_HANDLE_INVALID ) {
+        // first call for a new packet
+        // RAIL_RX_PACKET_HANDLE_OLDEST
+        // RAIL_RX_PACKET_HANDLE_NEWEST
+        packHandle = RAIL_RX_PACKET_HANDLE_OLDEST;
+    } else {
+        // second call, use saved handle
+        packHandle = dev->lastRxPacketHandle;
+    }
+
+    // first packet info -> payload length
+    packHandle = RAIL_GetRxPacketInfo(  dev->rhandle, 
+                                        packHandle,
+                                        &packInfo
+                                     );
+    dev->lastRxPacketHandle = packHandle;
+
     // buf == NULL && len == 0 -> return packet size, no dropping
     if (buf == NULL && len == 0) {
-        DEBUG("_recv: no dropping return packet size: %d\n", rail_dev->recv_size);
-        return rail_dev->recv_size;
+        DEBUG("_recv: no dropping return packet size: 0x%02x\n", packInfo.packetBytes);
+        // -1 because no len infos
+        return packInfo.packetBytes -1;
     }
     // buf == NULL && len > 0 -> return packet size + drop it
     if (buf == NULL && len > 0) {
-        // TODO drop it?
-        DEBUG("_recv: drop packet - return packet size: %d\n", rail_dev->recv_size);
-        return rail_dev->recv_size;
+        // drop it
+        DEBUG("_recv: drop packet - return packet size: 0x%02x\n", packInfo.packetBytes);
+        RAIL_ReleaseRxPacket(dev->rhandle, packHandle);
+        dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
+        // -1 because no len infos
+        return packInfo.packetBytes;
     }
-    size_t cpy_size = (len > rail_dev->recv_size) ? rail_dev->recv_size : len;
 
-    memcpy(buf, rail_dev->recv_frame, cpy_size);
+    // clear info struct
+    memset(&packDetails, 0, sizeof(RAIL_RxPacketDetails_t));
 
-    rail_dev->recv_taken = false;
+    // get more infos about the packet
+    ret = RAIL_GetRxPacketDetails(dev->rhandle, packHandle, &packDetails);
+
+    if (ret != RAIL_STATUS_NO_ERROR) {
+        LOG_ERROR("Error receiving new packet / frame - msg %s\n", rail_error2str(ret));
+        return -1;
+    }
+
+    DEBUG("time received: %lu\n"
+            "crcStatus %s \n"
+            "isAck: %s\n"
+            "subPhy: %u\n"
+            "rssiLatch: %d dBm\n"
+            "lqi: %u\n"
+            "syncWordId: %u\n"
+            "antenna id: %u\n"
+            "payload size: %u\n",
+            packDetails.timeReceived.packetTime,
+            packDetails.crcPassed ? "Passed":"Failed",
+            packDetails.isAck ? "Ack" : "Not a Ack",
+            packDetails.subPhyId,
+            packDetails.rssi,
+            packDetails.lqi ,
+            packDetails.syncWordId,
+            packDetails.antennaId,
+            packInfo.packetBytes
+         );
+
+    // question: with length info in byte 0 or without?
+    // first try without, skip it
+    packInfo.firstPortionData++;
+    packInfo.firstPortionBytes--;
+    packInfo.packetBytes--;
+
+    // copy payload of packet
+    RAIL_CopyRxPacket((uint8_t*)buf, &packInfo);
+
     /*  
     DEBUG("Print buf cpy size %d: ", cpy_size);
     for (int i = 0; i < cpy_size; i++) {
@@ -268,11 +266,15 @@ static int _recv(netdev_t* netdev, void* buf, size_t len, void* info)
 */
     if (info != NULL) { 
         netdev_ieee802154_rx_info_t* rx_info = info;
-        rx_info->rssi = rail_dev->recv_rssi;
-        rx_info->lqi = rail_dev->recv_lqi;
+        rx_info->rssi = packDetails.rssi;
+        rx_info->lqi = packDetails.lqi;
     }
 
-    return cpy_size;
+    // free packet, set handle to null
+    RAIL_ReleaseRxPacket(dev->rhandle, packHandle);
+    dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
+
+    return packInfo.packetBytes;
 }
 
 static void _isr(netdev_t* netdev) 
@@ -315,9 +317,17 @@ static int _get(netdev_t* netdev, netopt_t opt, void* val, size_t max_len)
         case (NETOPT_TX_POWER):     //
             assert(max_len >= sizeof(int16_t));
             // rail tx dbm has a factor of 10 -> loosing resolution here
-            int32_t dbm = RAIL_TxPowerGet();
-            dbm = dbm / PA_SCALING_FACTOR;
-            *((uint16_t *)val) = (uint16_t) dbm;
+            // get transmitt power
+            RAIL_TxPowerLevel_t powerLevel_tx = RAIL_GetTxPower(dev->rhandle);
+            RAIL_TxPower_t power_tx_ddBm = RAIL_ConvertRawToDbm(dev->rhandle, 
+#if RAIL_RADIO_BAND == 2400
+            RAIL_TX_POWER_MODE_2P4_HP,      // 2.4GHZ HighPower, TODO low power?
+#elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
+            RAIL_TX_POWER_MODE_SUBGIG,
+#endif
+            powerLevel_tx
+            );
+            *((uint16_t *)val) = (uint16_t) power_tx_ddBm / 10;
             ret = sizeof(uint16_t);
             break;
         case (NETOPT_RETRANS):      // todo
@@ -332,7 +342,7 @@ static int _get(netdev_t* netdev, netopt_t opt, void* val, size_t max_len)
             ret = sizeof(netopt_enable_t);
             break;
         case (NETOPT_AUTOACK):      
-            if (RAIL_AutoAckIsEnabled() == true) {
+            if (RAIL_IsAutoAckEnabled(dev->rhandle) == true) {
                 *((netopt_enable_t *)val) =  NETOPT_ENABLE;
             } else {
                 *((netopt_enable_t *)val) =  NETOPT_DISABLE;
@@ -449,7 +459,7 @@ netopt_state_t _get_state(rail_t* dev)
     
     // check state that can not 
     switch (dev->state) {
-        case (RAIL_TRANSCEIVER_STATE_UNINITIALISIED):
+        case (RAIL_TRANSCEIVER_STATE_UNINITIALIZED):
             return NETOPT_STATE_OFF;
         case (RAIL_TRANSCEIVER_STATE_SLEEP):
             return NETOPT_STATE_SLEEP;
@@ -459,15 +469,14 @@ netopt_state_t _get_state(rail_t* dev)
     
     // check state from rail
     
-    RAIL_RadioState_t state = RAIL_RfStateGet();
-    
-    switch (state) {
-        case (RAIL_RF_STATE_IDLE):
-            return NETOPT_STATE_IDLE;
-        case (RAIL_RF_STATE_RX):
-            return NETOPT_STATE_RX;
-        case (RAIL_RF_STATE_TX):
-            return NETOPT_STATE_TX;
+    RAIL_RadioState_t state = RAIL_GetRadioState(dev->rhandle);
+
+    if (state & RAIL_RF_STATE_RX) {
+        return NETOPT_STATE_RX;
+    } else if (state & RAIL_RF_STATE_TX) {
+        return NETOPT_STATE_TX;
+    } else if (state == RAIL_RF_STATE_IDLE){
+        return NETOPT_STATE_IDLE;
     }
     
     return NETOPT_STATE_IDLE;

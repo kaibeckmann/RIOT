@@ -13,6 +13,10 @@
 #include "net/gnrc/nettype.h"
 #include "net/eui64.h" 
 
+// silabs includes
+
+#include "rail.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,7 +24,7 @@ extern "C" {
 
 // states of the radio transceiver
 
-#define RAIL_TRANSCEIVER_STATE_UNINITIALISIED   0x00
+#define RAIL_TRANSCEIVER_STATE_UNINITIALIZED    0x00
 #define RAIL_TRANSCEIVER_STATE_IDLE             0x01
 #define RAIL_TRANSCEIVER_STATE_SLEEP            0x02
 #define RAIL_TRANSCEIVER_STATE_OFF              0x03
@@ -45,7 +49,19 @@ typedef struct {
     netdev_ieee802154_t netdev;
     rail_params_t params;
 
+    // handle of the rail blob driver instance
+    RAIL_Handle_t rhandle;
+    // config of the rail blob driver
+    RAIL_Config_t rconfig;
+
     uint8_t state;              // state of radio
+
+    // state waiting for ack
+    volatile bool waiting_for_ack;
+
+    RAIL_RxPacketHandle_t lastRxPacketHandle;
+    
+
     bool promiscuousMode;
     eui64_t eui;
 
@@ -68,6 +84,13 @@ int rail_init(rail_t* dev);
 int rail_tx_prepare(rail_t* dev);
 
 int rail_start_rx(rail_t* dev);
+
+int rail_transmit_frame(rail_t* dev, uint8_t* data_ptr, size_t data_length);
+
+const char* rail_error2str(RAIL_Status_t status);
+const char* rail_packetStatus2str(RAIL_RxPacketStatus_t status);
+
+const char* rail_radioState2str(RAIL_RadioState_t state);
 
 #ifdef __cplusplus
 }
