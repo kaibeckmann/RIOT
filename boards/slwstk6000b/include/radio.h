@@ -13,7 +13,7 @@
  * @{
  *
  * @file
- * @brief       Board specific definitions for the radio transceicer of the 
+ * @brief       Board specific definitions for the radio transceicer of the
  * slwstk6000b starter kit
  *
  * @author      Kai Beckmann <kai.beckmann@hs-rm.de>
@@ -62,7 +62,7 @@ extern "C" {
   }
 #endif
 
-    
+
 #ifdef __cplusplus
 }
 #endif

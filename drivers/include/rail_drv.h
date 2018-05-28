@@ -11,7 +11,7 @@
 #include "net/netdev.h"
 #include "net/netdev/ieee802154.h"
 #include "net/gnrc/nettype.h"
-#include "net/eui64.h" 
+#include "net/eui64.h"
 
 // silabs includes
 
@@ -30,7 +30,7 @@ extern "C" {
 #define RAIL_TRANSCEIVER_STATE_OFF              0x03
 #define RAIL_TRANSCEIVER_STATE_RX               0x04
 #define RAIL_TRANSCEIVER_STATE_TX               0x05
- 
+
 
 //#define RAIL_DEFAULT_PANID         (IEEE802154_DEFAULT_PANID)
 #define RAIL_DEFAULT_PANID         0x0023
@@ -60,7 +60,7 @@ typedef struct {
     volatile bool waiting_for_ack;
 
     RAIL_RxPacketHandle_t lastRxPacketHandle;
-    
+
 
     bool promiscuousMode;
     eui64_t eui;

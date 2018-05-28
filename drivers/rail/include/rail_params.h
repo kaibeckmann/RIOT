@@ -12,7 +12,7 @@ extern "C" {
 #define RAIL_PARAMS_DEFAULT {.tmp = 23, \
                              .XTAL_frequency = 38400000UL, \
                              .BASE_frequency = 2450000000UL, \
-                             .max_transit_power = 0 } 
+                             .max_transit_power = 0 }
 
 static const rail_params_t rail_params[] = {
 #ifdef RAIL_PARAMS_BOARD

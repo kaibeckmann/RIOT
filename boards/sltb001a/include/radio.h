@@ -11,7 +11,7 @@
  * @{
  *
  * @file
- * @brief       Board specific definitions for the radio transceiver of the 
+ * @brief       Board specific definitions for the radio transceiver of the
  * SLTB001A starter kit
  *
  * @author      Kai Beckmann <kai.beckmann@hs-rm.de>
@@ -62,7 +62,7 @@ extern "C" {
   }
 #endif
 
-    
+
 #ifdef __cplusplus
 }
 #endif

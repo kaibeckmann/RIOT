@@ -11,7 +11,7 @@ extern "C" {
  * @brief RAIL Configuration
  * @copyright Copyright 2016 Silicon Laboratories, Inc. http://www.silabs.com
  *
- * Adapted form mbed 
+ * Adapted form mbed
  * https://github.com/ARMmbed/mbed-os/blob/master/targets/TARGET_Silicon_Labs/TARGET_SL_RAIL/efr32-rf-driver/rail/TOOLCHAIN_GCC_ARM/TARGET_EFR32MG1/ieee802154_subg_efr32xg1_configurator_out.c
  * */
 

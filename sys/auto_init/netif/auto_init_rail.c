@@ -20,7 +20,7 @@
 #endif
 
 
-// there could be more interfaces, if BLE and 802.15.4 are used together, or the 
+// there could be more interfaces, if BLE and 802.15.4 are used together, or the
 // 2.4 GHz and the 868 MHz transceiver?
 
 #define RAIL_IFACE_NUM 1 // todo calc number?
@@ -32,25 +32,24 @@ static char _rail_802154_2p4ghz_stack[RAIL_MAC_STACKSIZE];
 
 void auto_init_rail(void)
 {
-  
+
     // there is only on iface atm
-    
+
     DEBUG("[auto_init_netif] called\n");
-    
+
     // 802.15.4 2.4ghz
     const rail_params_t *p = &rail_params[RAIL_802154_2P4GHZ_PARAM_INDEX];
-    
+
     // init rail driver
-    
+
     rail_setup(&rail_802154_2p4ghz_dev, (rail_params_t*) p);
-    
+
     // init ieee802154 layer
     gnrc_netif_ieee802154_create(_rail_802154_2p4ghz_stack,
                                      RAIL_MAC_STACKSIZE,
-                                     RAIL_MAC_PRIO, 
+                                     RAIL_MAC_PRIO,
                                      "rail 802.15.4 2.4GHz",
                                      (netdev_t *)&rail_802154_2p4ghz_dev);
-    
 }
 
 #else
