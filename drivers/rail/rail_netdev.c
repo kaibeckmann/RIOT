@@ -42,7 +42,7 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len);
 static  uint8_t frame[IEEE802154_FRAME_LEN_MAX + 1];
 
 
-static const RAIL_CsmaConfig_t csmaConfig = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
+static const RAIL_CsmaConfig_t csma_config = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
 
 // local helper functions
 netopt_state_t _get_state(rail_t* dev);
@@ -166,9 +166,9 @@ static int _recv(netdev_t* netdev, void* buf, size_t len, void* info) {
 
     rail_t* dev = (rail_t*) netdev;
 
-    RAIL_RxPacketHandle_t   packHandle;
-    RAIL_RxPacketInfo_t     packInfo;
-    RAIL_RxPacketDetails_t  packDetails;
+    RAIL_RxPacketHandle_t   pack_handle;
+    RAIL_RxPacketInfo_t     pack_info;
+    RAIL_RxPacketDetails_t  pack_details;
     RAIL_Status_t           ret;
 
     // get infos about the received package
@@ -182,40 +182,40 @@ static int _recv(netdev_t* netdev, void* buf, size_t len, void* info) {
         // first call for a new packet
         // RAIL_RX_PACKET_HANDLE_OLDEST
         // RAIL_RX_PACKET_HANDLE_NEWEST
-        packHandle = RAIL_RX_PACKET_HANDLE_OLDEST;
+        pack_handle = RAIL_RX_PACKET_HANDLE_OLDEST;
     } else {
         // second call, use saved handle
-        packHandle = dev->lastRxPacketHandle;
+        pack_handle = dev->lastRxPacketHandle;
     }
 
     // first packet info -> payload length
-    packHandle = RAIL_GetRxPacketInfo(  dev->rhandle,
-                                        packHandle,
-                                        &packInfo
+    pack_handle = RAIL_GetRxPacketInfo(  dev->rhandle,
+                                        pack_handle,
+                                        &pack_info
                                      );
-    dev->lastRxPacketHandle = packHandle;
+    dev->lastRxPacketHandle = pack_handle;
 
     // buf == NULL && len == 0 -> return packet size, no dropping
     if (buf == NULL && len == 0) {
-        DEBUG("_recv: no dropping return packet size: 0x%02x\n", packInfo.packetBytes);
+        DEBUG("_recv: no dropping return packet size: 0x%02x\n", pack_info.packetBytes);
         // -1 because no len infos
-        return packInfo.packetBytes -1;
+        return pack_info.packetBytes -1;
     }
     // buf == NULL && len > 0 -> return packet size + drop it
     if (buf == NULL && len > 0) {
         // drop it
-        DEBUG("_recv: drop packet - return packet size: 0x%02x\n", packInfo.packetBytes);
-        RAIL_ReleaseRxPacket(dev->rhandle, packHandle);
+        DEBUG("_recv: drop packet - return packet size: 0x%02x\n", pack_info.packetBytes);
+        RAIL_ReleaseRxPacket(dev->rhandle, pack_handle);
         dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
         // -1 because no len infos
-        return packInfo.packetBytes;
+        return pack_info.packetBytes;
     }
 
     // clear info struct
-    memset(&packDetails, 0, sizeof(RAIL_RxPacketDetails_t));
+    memset(&pack_details, 0, sizeof(RAIL_RxPacketDetails_t));
 
     // get more infos about the packet
-    ret = RAIL_GetRxPacketDetails(dev->rhandle, packHandle, &packDetails);
+    ret = RAIL_GetRxPacketDetails(dev->rhandle, pack_handle, &pack_details);
 
     if (ret != RAIL_STATUS_NO_ERROR) {
         LOG_ERROR("Error receiving new packet / frame - msg %s\n", rail_error2str(ret));
@@ -231,25 +231,25 @@ static int _recv(netdev_t* netdev, void* buf, size_t len, void* info) {
             "syncWordId: %u\n"
             "antenna id: %u\n"
             "payload size: %u\n",
-            packDetails.timeReceived.packetTime,
-            packDetails.crcPassed ? "Passed":"Failed",
-            packDetails.isAck ? "Ack" : "Not a Ack",
-            packDetails.subPhyId,
-            packDetails.rssi,
-            packDetails.lqi ,
-            packDetails.syncWordId,
-            packDetails.antennaId,
-            packInfo.packetBytes
+            pack_details.timeReceived.packetTime,
+            pack_details.crcPassed ? "Passed":"Failed",
+            pack_details.isAck ? "Ack" : "Not a Ack",
+            pack_details.subPhyId,
+            pack_details.rssi,
+            pack_details.lqi ,
+            pack_details.syncWordId,
+            pack_details.antennaId,
+            pack_info.packetBytes
          );
 
     // question: with length info in byte 0 or without?
     // first try without, skip it
-    packInfo.firstPortionData++;
-    packInfo.firstPortionBytes--;
-    packInfo.packetBytes--;
+    pack_info.firstPortionData++;
+    pack_info.firstPortionBytes--;
+    pack_info.packetBytes--;
 
     // copy payload of packet
-    RAIL_CopyRxPacket((uint8_t*)buf, &packInfo);
+    RAIL_CopyRxPacket((uint8_t*)buf, &pack_info);
 
     /*
     DEBUG("Print buf cpy size %d: ", cpy_size);
@@ -261,15 +261,15 @@ static int _recv(netdev_t* netdev, void* buf, size_t len, void* info) {
 */
     if (info != NULL) {
         netdev_ieee802154_rx_info_t* rx_info = info;
-        rx_info->rssi = packDetails.rssi;
-        rx_info->lqi = packDetails.lqi;
+        rx_info->rssi = pack_details.rssi;
+        rx_info->lqi = pack_details.lqi;
     }
 
     // free packet, set handle to null
-    RAIL_ReleaseRxPacket(dev->rhandle, packHandle);
+    RAIL_ReleaseRxPacket(dev->rhandle, pack_handle);
     dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
 
-    return packInfo.packetBytes;
+    return pack_info.packetBytes;
 }
 
 static void _isr(netdev_t* netdev) {
@@ -311,15 +311,15 @@ static int _get(netdev_t* netdev, netopt_t opt, void* val, size_t max_len) {
             assert(max_len >= sizeof(int16_t));
             // rail tx dbm has a factor of 10 -> loosing resolution here
             // get transmitt power
-            RAIL_TxPowerLevel_t powerLevel_tx = RAIL_GetTxPower(dev->rhandle);
+            RAIL_TxPowerLevel_t power_level_tx = RAIL_GetTxPower(dev->rhandle);
             RAIL_TxPower_t power_tx_ddBm = RAIL_ConvertRawToDbm(dev->rhandle,
 #if RAIL_RADIO_BAND == 2400
-            RAIL_TX_POWER_MODE_2P4_HP,      // 2.4GHZ HighPower, TODO low power?
+                            RAIL_TX_POWER_MODE_2P4_HP,      // 2.4GHZ HighPower, TODO low power?
 #elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
-            RAIL_TX_POWER_MODE_SUBGIG,
+                            RAIL_TX_POWER_MODE_SUBGIG,
 #endif
-            powerLevel_tx
-            );
+                            power_level_tx
+                            );
             *((uint16_t *)val) = (uint16_t) power_tx_ddBm / 10;
             ret = sizeof(uint16_t);
             break;
@@ -352,7 +352,7 @@ static int _get(netdev_t* netdev, netopt_t opt, void* val, size_t max_len) {
             break;
         case (NETOPT_CSMA_RETRIES):
             assert(max_len >= sizeof(int8_t));
-            *((uint8_t *)val) = csmaConfig.csmaTries;
+            *((uint8_t *)val) = csma_config.csmaTries;
             ret = sizeof(uint8_t);
             break;
         case (NETOPT_AUTOCCA):

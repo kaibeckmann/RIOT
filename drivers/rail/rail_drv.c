@@ -195,9 +195,9 @@ int _rail_PTI_init(rail_t* dev) {
 
     // init gpio for output
 
-    RAIL_PtiConfig_t ptiConfig = RAIL_PTI_CONFIG;
+    RAIL_PtiConfig_t pti_config = RAIL_PTI_CONFIG;
 
-    RAIL_ConfigPti(RAIL_EFR32_HANDLE, &ptiConfig);
+    RAIL_ConfigPti(RAIL_EFR32_HANDLE, &pti_config);
 
     RAIL_EnablePti(RAIL_EFR32_HANDLE, true);
 
@@ -211,14 +211,14 @@ int _rail_PTI_init(rail_t* dev) {
 int _rail_PA_init(rail_t* dev) {
 
       // Initialize the RAIL Tx power curves for all PAs on this chip
-    RAIL_TxPowerCurvesConfig_t txPowerCurvesConfig = {
+    RAIL_TxPowerCurvesConfig_t tx_power_curves_config = {
         curves24Hp,
         curvesSg,
         curves24Lp,
         piecewiseSegments
     };
 
-    RAIL_Status_t ret = RAIL_InitTxPowerCurves(&txPowerCurvesConfig);
+    RAIL_Status_t ret = RAIL_InitTxPowerCurves(&tx_power_curves_config);
 
     if (ret != RAIL_STATUS_NO_ERROR) {
         LOG_ERROR("Error init PA  (Tx power curves) for rail - error msg: %s\n", rail_error2str(ret));
@@ -227,7 +227,7 @@ int _rail_PA_init(rail_t* dev) {
 
     // Power config, depends on chip etc ...
     // TODO multi freq, mult protocol
-    RAIL_TxPowerConfig_t txPowerConfig = {
+    RAIL_TxPowerConfig_t tx_power_config = {
     #if RAIL_RADIO_BAND == 2400
         RAIL_TX_POWER_MODE_2P4_HP,      // 2.4GHZ HighPower, TODO low power?
     #elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
@@ -237,15 +237,14 @@ int _rail_PA_init(rail_t* dev) {
         10
         };
 
-    ret = RAIL_ConfigTxPower(dev->rhandle, &txPowerConfig);
+    ret = RAIL_ConfigTxPower(dev->rhandle, &tx_power_config);
 
     if (ret != RAIL_STATUS_NO_ERROR) {
         LOG_ERROR("Error init PA  (config Tx power) for rail - error msg: %s\n", rail_error2str(ret));
         return -1;
     }
 
-    ret = RAIL_SetTxPowerDbm(dev->rhandle,
-            ((RAIL_TxPower_t)RAIL_DEFAULT_TXPOWER) * 10);
+    ret = RAIL_SetTxPowerDbm(dev->rhandle, ((RAIL_TxPower_t) RAIL_DEFAULT_TXPOWER) * 10);
 
     if (ret != RAIL_STATUS_NO_ERROR) {
         LOG_ERROR("Error init PA  (set tx power) for rail");
@@ -284,12 +283,12 @@ int rail_init(rail_t* dev)
 
     // get informations about the used raillib
     // TODO check if driver is compatible?
-    RAIL_Version_t railVersion;
-    RAIL_GetVersion(&railVersion, true);
+    RAIL_Version_t rail_version;
+    RAIL_GetVersion(&rail_version, true);
 
     LOG_INFO("Using Silicon Labs RAIL Lib. Version %u.%u Rev: %u build: %u multiprotocol: %s \n",
-                railVersion.major, railVersion.minor, railVersion.rev, railVersion.build,
-                railVersion.multiprotocol ? "YES" : "NO");
+                rail_version.major, rail_version.minor, rail_version.rev, rail_version.build,
+                rail_version.multiprotocol ? "YES" : "NO");
 
 
     // init rail blob config
@@ -311,14 +310,14 @@ int rail_init(rail_t* dev)
 
     // config data management, easier version with packets
 
-    static const RAIL_DataConfig_t railDataConfig = {
+    static const RAIL_DataConfig_t rail_data_config = {
         TX_PACKET_DATA,
         RX_PACKET_DATA,
         PACKET_MODE,
         PACKET_MODE,
     };
 
-    ret = RAIL_ConfigData(dev->rhandle, &railDataConfig);
+    ret = RAIL_ConfigData(dev->rhandle, &rail_data_config);
 
     if (ret != RAIL_STATUS_NO_ERROR) {
         LOG_ERROR("Can not init rail data config - error msg: %s\n", rail_error2str(ret));
@@ -441,19 +440,19 @@ int rail_init(rail_t* dev)
 
 
     // get transmitt power
-    RAIL_TxPowerLevel_t powerLevel_tx = RAIL_GetTxPower(dev->rhandle);
+    RAIL_TxPowerLevel_t power_level_tx = RAIL_GetTxPower(dev->rhandle);
     RAIL_TxPower_t power_tx_ddBm = RAIL_ConvertRawToDbm(dev->rhandle,
     #if RAIL_RADIO_BAND == 2400
-        RAIL_TX_POWER_MODE_2P4_HP,      // 2.4GHZ HighPower, TODO low power?
+                    RAIL_TX_POWER_MODE_2P4_HP,      // 2.4GHZ HighPower, TODO low power?
     #elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
-        RAIL_TX_POWER_MODE_SUBGIG,
+                    RAIL_TX_POWER_MODE_SUBGIG,
     #endif
-        powerLevel_tx
-        );
+                    power_level_tx
+                    );
 
 
 
-    DEBUG("TX Power set to raw: %hhu %hd deci dBm\n", powerLevel_tx, power_tx_ddBm);
+    DEBUG("TX Power set to raw: %hhu %hd deci dBm\n", power_level_tx, power_tx_ddBm);
 
 
         // config events
@@ -520,14 +519,14 @@ int rail_transmit_frame(rail_t* dev, uint8_t* data_ptr, size_t data_length)
     RAIL_WriteTxFifo(dev->rhandle, data_ptr, data_length + 1, true);
 
     // config tx options
-    RAIL_TxOptions_t txOption = RAIL_TX_OPTIONS_DEFAULT;
+    RAIL_TxOptions_t tx_option = RAIL_TX_OPTIONS_DEFAULT;
 
     dev->state = RAIL_TRANSCEIVER_STATE_TX;
 
 
     // check if ack req
     if (dev->netdev.flags & NETDEV_IEEE802154_ACK_REQ) {
-        txOption |= RAIL_TX_OPTION_WAIT_FOR_ACK;
+        tx_option |= RAIL_TX_OPTION_WAIT_FOR_ACK;
         DEBUG("tx option auto ack\n");
         // TODO wait for ack
     }
@@ -535,7 +534,7 @@ int rail_transmit_frame(rail_t* dev, uint8_t* data_ptr, size_t data_length)
     DEBUG("[rail] transmit - radio state: %s\n", rail_radioState2str(RAIL_GetRadioState(dev->rhandle)));
     RAIL_Status_t ret = RAIL_StartCcaCsmaTx(dev->rhandle,
                 dev->netdev.chan,
-                txOption,
+                tx_option,
                 &_rail_csma_config,
                 NULL);
 
@@ -624,18 +623,18 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
         DEBUG("Rail event rx packet received\n");
 
         // check if packet is ok
-        RAIL_RxPacketInfo_t rxPacketInfo;
-        RAIL_RxPacketHandle_t rxHandle = RAIL_GetRxPacketInfo(rhandle,
+        RAIL_RxPacketInfo_t rx_packet_info;
+        RAIL_RxPacketHandle_t rx_handle = RAIL_GetRxPacketInfo(rhandle,
                                                               RAIL_RX_PACKET_HANDLE_NEWEST,
-                                                              &rxPacketInfo
+                                                              &rx_packet_info
                                                              );
 
-        DEBUG("[rail] rx packet event - len p 0x%02x - len2 0x%02x\n", rxPacketInfo.firstPortionData[0], rxPacketInfo.packetBytes);
-        if (rxPacketInfo.packetStatus  != RAIL_RX_PACKET_READY_SUCCESS) {
+        DEBUG("[rail] rx packet event - len p 0x%02x - len2 0x%02x\n", rx_packet_info.firstPortionData[0], rx_packet_info.packetBytes);
+        if (rx_packet_info.packetStatus  != RAIL_RX_PACKET_READY_SUCCESS) {
             // error
-            DEBUG("Got an packet with an error - packet status msg: %s \n", rail_packetStatus2str(rxPacketInfo.packetStatus));
+            DEBUG("Got an packet with an error - packet status msg: %s \n", rail_packetStatus2str(rx_packet_info.packetStatus));
             dev->netdev.netdev.event_callback((netdev_t*) &dev->netdev, NETDEV_EVENT_CRC_ERROR);
-            RAIL_ReleaseRxPacket(rhandle, rxHandle);
+            RAIL_ReleaseRxPacket(rhandle, rx_handle);
         } else {
             DEBUG("Rail event rx packet  good packet \n");
             // hold packet so it can be received from user thread context
