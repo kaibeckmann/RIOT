@@ -2,5 +2,7 @@ ifneq (,$(filter silabs_pic,$(USEMODULE)))
   USEMODULE += periph_i2c
 endif
 ifneq (,$(filter gnrc_netdev_default netdev_default,$(USEMODULE)))
+  ifeq (1,$(EFM32_RADIO))
     USEMODULE += rail
+  endif
 endif
