@@ -6,8 +6,8 @@
  * directory for more details.
  */
 
-#ifndef  RAIL_NETDEV_H
-#define  RAIL_NETDEV_H
+#ifndef RAIL_NETDEV_H
+#define RAIL_NETDEV_H
 
 #include "net/netdev.h"
 
@@ -21,4 +21,4 @@ extern "C" {
 }
 #endif
 
-#endif   /* ----- #ifndef RAIL_NETDEV_H  ----- */
+#endif /* RAIL_NETDEV_H */

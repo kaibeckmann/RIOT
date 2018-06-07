@@ -6,8 +6,8 @@
  * directory for more details.
  */
 
-#ifndef  RAIL_DRV_H
-#define  RAIL_DRV_H
+#ifndef RAIL_DRV_H
+#define RAIL_DRV_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -103,4 +103,4 @@ const char* rail_radioState2str(RAIL_RadioState_t state);
 }
 #endif
 
-#endif   /* ----- #ifndef RAIL_DRV_H  ----- */
+#endif /* RAIL_DRV_H */

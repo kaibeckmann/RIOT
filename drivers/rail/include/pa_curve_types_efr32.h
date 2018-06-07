@@ -132,4 +132,4 @@ typedef struct RAIL_TxPowerCurvesConfig {
 }
 #endif
 
-#endif
+#endif /* PA_CURVE_TYPES_EFR32_H */

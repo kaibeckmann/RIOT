@@ -79,4 +79,4 @@ RAIL_TxPowerCurves_t const * RAIL_GetTxPowerCurve(RAIL_TxPowerMode_t mode);
 }
 #endif
 
-#endif
+#endif /* PA_CONVERSIONS_EFR32_H */

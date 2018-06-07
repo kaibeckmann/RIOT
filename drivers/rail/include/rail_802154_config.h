@@ -6,8 +6,8 @@
  * directory for more details.
  */
 
-#ifndef  RAIL_802154_CONFIG_H
-#define  RAIL_802154_CONFIG_H
+#ifndef RAIL_802154_CONFIG_H
+#define RAIL_802154_CONFIG_H
 
 
 #ifdef __cplusplus
@@ -168,4 +168,4 @@ extern "C" {
 #endif
 
 
-#endif   /* ----- #ifndef RAIL_802154_CONFIG_H  ----- */
+#endif /* RAIL_802154_CONFIG_H */

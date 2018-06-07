@@ -168,4 +168,4 @@ extern "C" {
 }
 #endif
 
-#endif
+#endif /* PA_CURVES_EFR32_H */
