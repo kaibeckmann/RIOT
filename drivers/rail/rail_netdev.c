@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2018 Hochschule RheinMain
+ *
+ * This file is subject to the terms and conditions of the GNU Lesser
+ * General Public License v2.1. See the file LICENSE in the top level
+ * directory for more details.
+ */
 
 #include <string.h>
 
@@ -427,13 +434,13 @@ static int _get(netdev_t* netdev, netopt_t opt, void* val, size_t max_len) {
 }
 
 static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len) {
-    
+
     if (netdev == NULL) {
         return -ENODEV;
     }
 
     rail_t* dev = (rail_t*) netdev;
-    (void) dev; 
+    (void) dev;
 
     DEBUG("rail_netdev->set called opt %s val %p len %d \n", netopt2str(opt), val, len);
     // bei channel, testen ob channel zur frequenz passt

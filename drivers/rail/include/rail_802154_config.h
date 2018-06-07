@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2018 Hochschule RheinMain
+ *
+ * This file is subject to the terms and conditions of the GNU Lesser
+ * General Public License v2.1. See the file LICENSE in the top level
+ * directory for more details.
+ */
 
 #ifndef  RAIL_802154_CONFIG_H
 #define  RAIL_802154_CONFIG_H
