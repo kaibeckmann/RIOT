@@ -285,7 +285,7 @@ static int _get(netdev_t* netdev, netopt_t opt, void* val, size_t max_len) {
     }
 
     rail_t* dev = (rail_t*) netdev;
-    (void) dev;
+
 
     // todo necessary to differencate if transceiver is acitive or not?
     int ret = -ENOTSUP;
@@ -427,10 +427,15 @@ static int _get(netdev_t* netdev, netopt_t opt, void* val, size_t max_len) {
 }
 
 static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len) {
-    // make gcc happy
-    netdev = netdev;
-    len = len;
-    DEBUG("rail_netdev->set called opt %s val %p \n", netopt2str(opt), val);
+    
+    if (netdev == NULL) {
+        return -ENODEV;
+    }
+
+    rail_t* dev = (rail_t*) netdev;
+    (void) dev; 
+
+    DEBUG("rail_netdev->set called opt %s val %p len %d \n", netopt2str(opt), val, len);
     // bei channel, testen ob channel zur frequenz passt
     // bool     RAIL_IEEE802154_IsEnabled (void)
     // bool     RAIL_IEEE802154_SetPanId (uint16_t panId)

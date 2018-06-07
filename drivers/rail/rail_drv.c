@@ -190,16 +190,14 @@ void rail_setup(rail_t* dev, const rail_params_t* params)
 #if (RAIL_PTI_ENABLED == 1)
 int _rail_PTI_init(rail_t* dev) {
 
-    // make gcc happy
-    dev = dev;
 
     // init gpio for output
 
     RAIL_PtiConfig_t pti_config = RAIL_PTI_CONFIG;
 
-    RAIL_ConfigPti(RAIL_EFR32_HANDLE, &pti_config);
+    RAIL_ConfigPti(dev->rhandle, &pti_config);
 
-    RAIL_EnablePti(RAIL_EFR32_HANDLE, true);
+    RAIL_EnablePti(dev->rhandle, true);
 
 
     DEBUG("RADIO_PTI_Init done\n");
