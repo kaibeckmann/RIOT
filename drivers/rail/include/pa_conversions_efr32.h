@@ -33,8 +33,8 @@
  * arising from your use of this Software.
  *
  ******************************************************************************/
-#ifndef __PA_CONVERSIONS_EFR32_H_
-#define __PA_CONVERSIONS_EFR32_H_
+#ifndef PA_CONVERSIONS_EFR32_H
+#define PA_CONVERSIONS_EFR32_H
 
 #include "rail_types.h"
 #include "rail_chip_specific.h"

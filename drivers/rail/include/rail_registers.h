@@ -1,6 +1,6 @@
 
-#ifndef  RAIL_REGISTERS_H_INC
-#define  RAIL_REGISTERS_H_INC
+#ifndef  RAIL_REGISTERS_H
+#define  RAIL_REGISTERS_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,4 +13,4 @@ extern "C" {
 
 
 
-#endif   /* ----- #ifndef RAIL_REGISTERS_H_INC  ----- */
+#endif   /* ----- #ifndef RAIL_REGISTERS_H  ----- */

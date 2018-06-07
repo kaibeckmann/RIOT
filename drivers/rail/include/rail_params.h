@@ -1,6 +1,6 @@
 
-#ifndef  RAIL_PARAMS_H_INC
-#define  RAIL_PARAMS_H_INC
+#ifndef  RAIL_PARAMS_H
+#define  RAIL_PARAMS_H
 
 #include "board.h"
 #include "rail_drv.h"
@@ -28,4 +28,4 @@ static const rail_params_t rail_params[] = {
 #endif
 
 
-#endif   /* ----- #ifndef RAIL_PARAMS_H_INC  ----- */
+#endif   /* ----- #ifndef RAIL_PARAMS_H  ----- */

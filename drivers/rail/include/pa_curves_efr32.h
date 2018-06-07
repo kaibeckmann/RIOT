@@ -33,8 +33,8 @@
  * arising from your use of this Software.
  *
  ******************************************************************************/
-#ifndef __PA_CURVES_EFR32_H_
-#define __PA_CURVES_EFR32_H_
+#ifndef PA_CURVES_EFR32_H
+#define PA_CURVES_EFR32_H
 
 #ifdef __cplusplus
 extern "C" {

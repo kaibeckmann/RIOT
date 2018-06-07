@@ -1,6 +1,6 @@
 
-#ifndef  RAIL_NETDEV_H_INC
-#define  RAIL_NETDEV_H_INC
+#ifndef  RAIL_NETDEV_H
+#define  RAIL_NETDEV_H
 
 #include "net/netdev.h"
 
@@ -14,4 +14,4 @@ extern "C" {
 }
 #endif
 
-#endif   /* ----- #ifndef RAIL_NETDEV_H_INC  ----- */
+#endif   /* ----- #ifndef RAIL_NETDEV_H  ----- */

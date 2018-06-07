@@ -1,6 +1,6 @@
 
-#ifndef  RAIL_INTERNAL_H_INC
-#define  RAIL_INTERNAL_H_INC
+#ifndef  RAIL_INTERNAL_H
+#define  RAIL_INTERNAL_H
 
 #include "rail_params.h"
 
@@ -19,4 +19,4 @@ int rail_internal_init_radio_hal(const rail_params_t* params);
 #endif
 
 
-#endif   /* ----- #ifndef RAIL_INTERNAL_H_INC  ----- */
+#endif   /* ----- #ifndef RAIL_INTERNAL_H  ----- */

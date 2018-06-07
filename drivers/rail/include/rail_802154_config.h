@@ -1,6 +1,6 @@
 
-#ifndef  RAIL_802154_CONFIG_H_INC
-#define  RAIL_802154_CONFIG_H_INC
+#ifndef  RAIL_802154_CONFIG_H
+#define  RAIL_802154_CONFIG_H
 
 
 #ifdef __cplusplus
@@ -161,4 +161,4 @@ extern "C" {
 #endif
 
 
-#endif   /* ----- #ifndef RAIL_802154_CONFIG_H_INC  ----- */
+#endif   /* ----- #ifndef RAIL_802154_CONFIG_H  ----- */
