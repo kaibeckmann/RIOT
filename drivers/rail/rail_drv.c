@@ -26,8 +26,6 @@
 
 // riot os rail driver includes
 #include "rail_drv.h"
-#include "rail_registers.h"
-#include "rail_internal.h"
 #include "rail_netdev.h"
 
 #include "net/ieee802154.h"

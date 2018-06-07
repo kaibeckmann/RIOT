@@ -27,8 +27,6 @@
 
 #include "rail_drv.h"
 #include "rail_netdev.h"
-#include "rail_internal.h"
-#include "rail_registers.h"
 
 
 
