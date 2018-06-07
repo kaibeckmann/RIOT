@@ -49,14 +49,14 @@ void auto_init_rail(void)
 
     // init rail driver
 
-    rail_setup(&rail_802154_2p4ghz_dev, (rail_params_t*) p);
+    rail_setup(&rail_802154_2p4ghz_dev, (rail_params_t *) p);
 
     // init ieee802154 layer
     gnrc_netif_ieee802154_create(_rail_802154_2p4ghz_stack,
-                                     RAIL_MAC_STACKSIZE,
-                                     RAIL_MAC_PRIO,
-                                     "rail 802.15.4 2.4GHz",
-                                     (netdev_t *)&rail_802154_2p4ghz_dev);
+                                 RAIL_MAC_STACKSIZE,
+                                 RAIL_MAC_PRIO,
+                                 "rail 802.15.4 2.4GHz",
+                                 (netdev_t *)&rail_802154_2p4ghz_dev);
 }
 
 #else

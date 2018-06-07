@@ -49,7 +49,7 @@ typedef struct rail_params {
     int tmp;
     uint64_t XTAL_frequency;
     uint64_t BASE_frequency;
-    int32_t  max_transit_power;
+    int32_t max_transit_power;
 } rail_params_t;
 
 typedef struct {
@@ -84,20 +84,20 @@ typedef struct {
 } rail_t;
 
 
-void rail_setup(rail_t* dev, const rail_params_t* params);
+void rail_setup(rail_t *dev, const rail_params_t *params);
 
-int rail_init(rail_t* dev);
+int rail_init(rail_t *dev);
 
-int rail_tx_prepare(rail_t* dev);
+int rail_tx_prepare(rail_t *dev);
 
-int rail_start_rx(rail_t* dev);
+int rail_start_rx(rail_t *dev);
 
-int rail_transmit_frame(rail_t* dev, uint8_t* data_ptr, size_t data_length);
+int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length);
 
-const char* rail_error2str(RAIL_Status_t status);
-const char* rail_packetStatus2str(RAIL_RxPacketStatus_t status);
+const char *rail_error2str(RAIL_Status_t status);
+const char *rail_packetStatus2str(RAIL_RxPacketStatus_t status);
 
-const char* rail_radioState2str(RAIL_RadioState_t state);
+const char *rail_radioState2str(RAIL_RadioState_t state);
 
 #ifdef __cplusplus
 }
