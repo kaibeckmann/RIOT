@@ -36,7 +36,7 @@
 #include "rail.h"
 #include "ieee802154/rail_ieee802154.h"
 
-
+#define _MAX_MHR_OVERHEAD   (25)
 
 /* local declaration of driver methodes */
 static int _send(netdev_t *netdev, const iolist_t *iolist);
@@ -151,8 +151,8 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
     for (const iolist_t *iol = iolist; iol; iol = iol->iol_next) {
         /* current packet data + FCS too long */
         if ((len + iol->iol_len + 2) > IEEE802154_FRAME_LEN_MAX) {
-            DEBUG("[rail] error: packet too large (%u byte) to be send\n",
-                  (unsigned)len + 2);
+            DEBUG("[rail] error: packet too large (len so far %u byte, combined %u) to be send\n",
+                  (unsigned)len + 2, (unsigned) len + 2 + iol->iol_len);
             return -EOVERFLOW;
         }
 #ifdef MODULE_NETSTATS_L2
@@ -353,7 +353,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
     switch (opt) {
         case (NETOPT_MAX_PACKET_SIZE):
             assert(max_len >= sizeof(int16_t));
-            *((uint16_t *)val) = IEEE802154_FRAME_LEN_MAX;
+            *((uint16_t *)val) = IEEE802154_FRAME_LEN_MAX - _MAX_MHR_OVERHEAD;
             ret = sizeof(uint16_t);
             break;
         case (NETOPT_CHANNEL_PAGE):
