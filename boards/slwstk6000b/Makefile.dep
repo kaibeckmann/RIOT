@@ -3,6 +3,12 @@ ifneq (,$(filter saul_default,$(USEMODULE)))
   USEMODULE += si7021
 endif
 
+ifneq (,$(filter netdev_default,$(USEMODULE)))
+  ifeq (1,$(EFM32_RADIO))
+    USEMODULE += rail
+  endif
+endif
+
 # include board common dependencies
 include $(RIOTBOARD)/common/silabs/Makefile.dep
 
