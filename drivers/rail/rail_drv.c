@@ -274,9 +274,6 @@ int rail_init(rail_t *dev)
     // TODO multible instances?
     _rail_dev = dev;
 
-    // hack for receive frame
-    dev->recv_taken = false;
-
 
     DEBUG("rail_init called\n");
 

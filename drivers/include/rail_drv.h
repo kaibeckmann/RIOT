@@ -63,24 +63,10 @@ typedef struct {
 
     uint8_t state;              // state of radio
 
-    // state waiting for ack
-    volatile bool waiting_for_ack;
-
     RAIL_RxPacketHandle_t lastRxPacketHandle;
-
 
     bool promiscuousMode;
     eui64_t eui;
-
-    uint8_t csmaTries;   // number of csma retries
-
-
-    // tmp receive buffer till proper buffer management is avaiable
-    uint8_t recv_frame[IEEE802154_FRAME_LEN_MAX + 1];
-    bool recv_taken;
-    uint16_t recv_size;
-    uint8_t recv_rssi;
-    uint8_t recv_lqi;
 } rail_t;
 
 
@@ -88,16 +74,17 @@ void rail_setup(rail_t *dev, const rail_params_t *params);
 
 int rail_init(rail_t *dev);
 
-int rail_tx_prepare(rail_t *dev);
 
 int rail_start_rx(rail_t *dev);
 
 int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length);
 
+#ifdef DEVELHELP
 const char *rail_error2str(RAIL_Status_t status);
 const char *rail_packetStatus2str(RAIL_RxPacketStatus_t status);
 
 const char *rail_radioState2str(RAIL_RadioState_t state);
+#endif /* DEVELHELP*/
 
 #ifdef __cplusplus
 }
