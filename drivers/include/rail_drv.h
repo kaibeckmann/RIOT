@@ -37,17 +37,19 @@ extern "C" {
 #define RAIL_TRANSCEIVER_STATE_TX               0x05
 
 
-//#define RAIL_DEFAULT_PANID         (IEEE802154_DEFAULT_PANID)
-#define RAIL_DEFAULT_PANID         0x0023
+#define RAIL_DEFAULT_PANID         (IEEE802154_DEFAULT_PANID)
 #define RAIL_DEFAULT_TXPOWER       (IEEE802154_DEFAULT_TXPOWER)
+
+enum rail_transceiver_config_frequency {
+    RAIL_TRANSCEIVER_FREQUENCY_2P4GHZ,
+    RAIL_TRANSCEIVER_FREQUENCY_868MHZ,
+    RAIL_TRANSCEIVER_FREQUENCY_912MHZ
+};
 
 
 typedef struct rail_params {
+    enum rail_transceiver_config_frequency freq;
 
-    int tmp;
-    uint64_t XTAL_frequency;
-    uint64_t BASE_frequency;
-    int32_t max_transit_power;
 } rail_params_t;
 
 typedef struct {

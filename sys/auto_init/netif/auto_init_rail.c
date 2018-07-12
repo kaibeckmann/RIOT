@@ -26,31 +26,28 @@
 #define RAIL_MAC_PRIO           (GNRC_NETIF_PRIO)
 #endif
 
+#define RAIL_NUM (sizeof(rail_params) / sizeof(rail_params[0]))
 
-static rail_t rail_802154_2p4ghz_dev;
-static char _rail_802154_2p4ghz_stack[RAIL_MAC_STACKSIZE];
+static rail_t rail_devs[RAIL_NUM];
+static char _rail_stacks[RAIL_NUM][RAIL_MAC_STACKSIZE];
+
 
 
 void auto_init_rail(void)
 {
+    for (unsigned i = 0; i < RAIL_NUM; i++) {
 
-    // there is only on iface atm
+        LOG_DEBUG("[auto_init_netif] initializing rail #%u\n", i);
+        
+        rail_setup(&rail_devs[i], &rail_params[i]);
 
-    DEBUG("[auto_init_netif] called\n");
-
-    // 802.15.4 2.4ghz
-    const rail_params_t *p = &rail_params[RAIL_802154_2P4GHZ_PARAM_INDEX];
-
-    // init rail driver
-
-    rail_setup(&rail_802154_2p4ghz_dev, (rail_params_t *) p);
-
-    // init ieee802154 layer
-    gnrc_netif_ieee802154_create(_rail_802154_2p4ghz_stack,
-                                 RAIL_MAC_STACKSIZE,
-                                 RAIL_MAC_PRIO,
-                                 "rail 802.15.4 2.4GHz",
-                                 (netdev_t *)&rail_802154_2p4ghz_dev);
+        /* init ieee802154 layer */
+        gnrc_netif_ieee802154_create(_rail_stacks[i],
+                                     RAIL_MAC_STACKSIZE,
+                                     RAIL_MAC_PRIO,
+                                     "rail 802.15.4",
+                                     (netdev_t *)&rail_devs[i]);
+    }
 }
 
 #else
