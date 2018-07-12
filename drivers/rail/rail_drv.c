@@ -291,7 +291,7 @@ int rail_init(rail_t *dev)
     RAIL_Version_t rail_version;
     RAIL_GetVersion(&rail_version, true);
 
-    LOG_INFO("Using Silicon Labs RAIL Lib. Version %u.%u Rev: %u build: %u multiprotocol: %s \n",
+    DEBUG("Using Silicon Labs RAIL Lib. Version %u.%u Rev: %u build: %u multiprotocol: %s \n",
              rail_version.major, rail_version.minor, rail_version.rev, rail_version.build,
              rail_version.multiprotocol ? "YES" : "NO");
 
