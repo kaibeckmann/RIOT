@@ -12,7 +12,7 @@
  *
  * @file
  * @brief       Board specific definitions for the radio transceiver of the
- * SLTB001A starter kit
+ *              SLTB001A starter kit
  *
  * @author      Kai Beckmann <kai.beckmann@hs-rm.de>
  **/

@@ -20,8 +20,6 @@
 #include "net/gnrc/nettype.h"
 #include "net/eui64.h"
 
-// silabs includes
-
 #include "rail.h"
 
 #ifdef __cplusplus
@@ -30,7 +28,7 @@ extern "C" {
 
 
 // states of the radio transceiver
-
+/* todo use enum?*/
 #define RAIL_TRANSCEIVER_STATE_UNINITIALIZED    0x00
 #define RAIL_TRANSCEIVER_STATE_IDLE             0x01
 #define RAIL_TRANSCEIVER_STATE_SLEEP            0x02

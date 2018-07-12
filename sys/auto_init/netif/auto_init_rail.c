@@ -7,7 +7,7 @@
  */
 
 
-#ifdef  MODULE_RAIL
+#ifdef MODULE_RAIL
 
 #include <stdint.h>
 
@@ -26,12 +26,6 @@
 #define RAIL_MAC_PRIO           (GNRC_NETIF_PRIO)
 #endif
 
-
-// there could be more interfaces, if BLE and 802.15.4 are used together, or the
-// 2.4 GHz and the 868 MHz transceiver?
-
-#define RAIL_IFACE_NUM 1 // todo calc number?
-#define RAIL_802154_2P4GHZ_PARAM_INDEX 0
 
 static rail_t rail_802154_2p4ghz_dev;
 static char _rail_802154_2p4ghz_stack[RAIL_MAC_STACKSIZE];

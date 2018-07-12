@@ -39,8 +39,8 @@ ifneq (,$(filter bmx280,$(USEMODULE)))
 endif
 
 ifneq (,$(filter rail,$(USEMODULE)))
-    USEMODULE_INCLUDES += $(RIOTBASE)/drivers/rail/include
-    include $(RIOTBASE)/drivers/rail/Makefile.include
+  USEMODULE_INCLUDES += $(RIOTBASE)/drivers/rail/include
+  include $(RIOTBASE)/drivers/rail/Makefile.include
 endif
 ifneq (,$(filter cc110x,$(USEMODULE)))
   USEMODULE_INCLUDES += $(RIOTBASE)/drivers/cc110x/include

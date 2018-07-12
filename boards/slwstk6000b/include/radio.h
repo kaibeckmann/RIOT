@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Hochschule RheinMain
+ * Copyright (C) 2017-2018 Hochschule RheinMain
  *
  * This file is subject to the terms and conditions of the GNU Lesser
  * General Public License v2.1. See the file LICENSE in the top level
@@ -14,7 +14,7 @@
  *
  * @file
  * @brief       Board specific definitions for the radio transceicer of the
- * slwstk6000b starter kit
+ *              slwstk6000b starter kit
  *
  * @author      Kai Beckmann <kai.beckmann@hs-rm.de>
  **/

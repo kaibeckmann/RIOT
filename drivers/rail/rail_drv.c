@@ -736,6 +736,7 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
     }
 }
 
+#ifdef DEVELHELP
 const char *rail_error2str(RAIL_Status_t status)
 {
 
@@ -796,3 +797,4 @@ const char *rail_radioState2str(RAIL_RadioState_t state)
             return "unknown state";
     }
 }
+#endif /* DEVELHELP */
