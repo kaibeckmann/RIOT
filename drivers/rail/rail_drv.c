@@ -498,20 +498,6 @@ int rail_init(rail_t *dev)
     return 0;
 }
 
-int rail_tx_prepare(rail_t *dev)
-{
-    // check state
-    // if uninit/init etc/ returnerror;
-    // if calibrate, error
-    // tx error
-    // if idle and rx
-    //    if waiting for ack
-    //      no timeout? error
-    //      timeout?, stats++, cont
-
-    dev->state = RAIL_TRANSCEIVER_STATE_TX;
-    return 0;
-}
 
 int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
 {
