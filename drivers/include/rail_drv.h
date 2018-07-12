@@ -73,7 +73,7 @@ typedef struct {
     eui64_t eui;
 
     uint8_t csmaTries;   // number of csma retries
-    bool macNoSleep;
+
 
     // tmp receive buffer till proper buffer management is avaiable
     uint8_t recv_frame[IEEE802154_FRAME_LEN_MAX + 1];

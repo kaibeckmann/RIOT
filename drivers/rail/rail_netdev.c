@@ -86,7 +86,6 @@ static int _init(netdev_t *netdev)
 
     // do not start in promiscuousMode
     dev->promiscuousMode = false;
-    dev->macNoSleep = false;
 
     netdev->driver = &rail_driver;
 
@@ -307,10 +306,6 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             *((uint16_t *)val) = IEEE802154_FRAME_LEN_MAX;
             ret = sizeof(uint16_t);
             break;
-        case (NETOPT_IS_WIRED):
-            // no wire attached ...
-            ret = 0;
-            break;
         case (NETOPT_CHANNEL_PAGE): // todo check if there is really nothing like a channel page?
             break;
         case (NETOPT_STATE):
@@ -354,10 +349,6 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             }
             ret = sizeof(netopt_enable_t);
             break;
-        case (NETOPT_PRELOADING):   // todo what does it do??
-            break;
-        case (NETOPT_RAWMODE):
-            break;
         case (NETOPT_CSMA):         // todo can it be switched on / off?
             *((netopt_enable_t *)val) = NETOPT_ENABLE;
             ret = sizeof(netopt_enable_t);
@@ -366,21 +357,6 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             assert(max_len >= sizeof(int8_t));
             *((uint8_t *)val) = csma_config.csmaTries;
             ret = sizeof(uint8_t);
-            break;
-        case (NETOPT_AUTOCCA):
-            break;
-        case (NETOPT_MAC_NO_SLEEP):
-            if (dev->macNoSleep == false) {
-                *((netopt_enable_t *)val) =  NETOPT_DISABLE;
-            }
-            else {
-                *((netopt_enable_t *)val) =  NETOPT_ENABLE;
-            }
-            ret = sizeof(netopt_enable_t);
-            break;
-        case (NETOPT_CHANNEL_HOP):
-            break;
-        case (NETOPT_CODING_RATE):
             break;
 
         case (NETOPT_BANDWIDTH):
@@ -393,40 +369,13 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
                ret = sizeof(uint8_t);
              */
             break;
-        case (NETOPT_CHANNEL_FREQUENCY):
-            break;
-        case (NETOPT_SINGLE_RECEIVE):
-            break;
-        case (NETOPT_IQ_INVERT):
-            break;
-        case (NETOPT_SRC_LEN):
-            break;
-        case (NETOPT_ADDRESS_LONG):
-            break;
-        case (NETOPT_DEVICE_TYPE):
-            break;
-        case (NETOPT_ADDRESS):
-            break;
-        case (NETOPT_CHANNEL):
-            break;
-        case (NETOPT_NID):
-            break;
-        case (NETOPT_SPREADING_FACTOR):
-            break;
-        case (NETOPT_ACK_REQ):
-            break;
-        case (NETOPT_STATS):
-            break;
         default:
-            DEBUG("not supported netopt code at rail drv %d str %s \n", opt, netopt2str(opt));
+            //DEBUG("not supported netopt code at rail drv %d str %s \n", opt, netopt2str(opt));
             break;
     }
     if (ret != -ENOTSUP) {
         return ret;
     }
-    // delegate cases to ieee802.15.4 layer
-    //NETOPT_PROTO
-    //
 
     ret = netdev_ieee802154_get((netdev_ieee802154_t *)netdev, opt, val, max_len);
 
@@ -434,7 +383,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
         return ret;
     }
 
-    //   DEBUG("ieee802.15.4 could not handle netopt opt %s \n", netopt2str(opt));
+    DEBUG("ieee802.15.4 could not handle netopt opt %s \n", netopt2str(opt));
 
     return ret;
 }
