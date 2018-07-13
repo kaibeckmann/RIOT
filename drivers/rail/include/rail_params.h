@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-#define RAIL_PARAMS_DEFAULT { .freq = RAIL_TRANSCEIVER_FREQUENCY_2P4GHZ}
+#define RAIL_PARAMS_DEFAULT { .freq = RAIL_TRANSCEIVER_FREQUENCY_2P4GHZ }
 
 static const rail_params_t rail_params[] = {
 #ifdef RAIL_PARAMS_BOARD

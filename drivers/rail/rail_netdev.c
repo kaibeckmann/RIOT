@@ -28,8 +28,6 @@
 #include "rail_drv.h"
 #include "rail_netdev.h"
 
-
-
 #include "log.h"
 
 #define ENABLE_DEBUG (0)
@@ -43,9 +41,7 @@ static void _isr(netdev_t *netdev);
 static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len);
 static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len);
 
-
 static uint8_t frame[IEEE802154_FRAME_LEN_MAX + 1];
-
 
 static const RAIL_CsmaConfig_t csma_config = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
 
@@ -61,12 +57,10 @@ const netdev_driver_t rail_driver = {
     .set = _set,
 };
 
-
 static int _init(netdev_t *netdev)
 {
 
-    rail_t *dev = (rail_t *) netdev;
-
+    rail_t *dev = (rail_t *)netdev;
 
     DEBUG("rail_netdev->init called\n");
     // set default channel
@@ -91,7 +85,6 @@ static int _init(netdev_t *netdev)
 
     int ret;
 
-
     ret = rail_init(dev);
 
     if (ret < 0) {
@@ -102,20 +95,16 @@ static int _init(netdev_t *netdev)
     if (ret < 0) {
         return ret;
     }
-//    RAIL_TRANSCEIVER_STATE_TX
-
-
+    //    RAIL_TRANSCEIVER_STATE_TX
 
     return 0;
 }
-
 
 static int _send(netdev_t *netdev, const iolist_t *iolist)
 {
     DEBUG("rail_netdev->send called\n");
 
-    rail_t *dev = (rail_t *) netdev;
-
+    rail_t *dev = (rail_t *)netdev;
 
     // todo check current state, make it depend what to do
     // if tx, return error
@@ -140,7 +129,6 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
 #endif
         memcpy(frame + len, iol->iol_base, iol->iol_len);
         len += iol->iol_len;
-
     }
 
     /*
@@ -154,7 +142,7 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
 
     //   uint8_t foo[512];
 
-//    (void)foo;
+    //    (void)foo;
 
     int ret = rail_transmit_frame(dev, frame, len);
 
@@ -163,7 +151,7 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
         return ret;
     }
 
-    return (int) len - 1;
+    return (int)len - 1;
 }
 
 static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
@@ -171,7 +159,7 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 
     DEBUG("rail_netdev->recv called\n");
 
-    rail_t *dev = (rail_t *) netdev;
+    rail_t *dev = (rail_t *)netdev;
 
     RAIL_RxPacketHandle_t pack_handle;
     RAIL_RxPacketInfo_t pack_info;
@@ -197,10 +185,9 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
     }
 
     // first packet info -> payload length
-    pack_handle = RAIL_GetRxPacketInfo(  dev->rhandle,
-                                         pack_handle,
-                                         &pack_info
-                                         );
+    pack_handle = RAIL_GetRxPacketInfo(dev->rhandle,
+                                       pack_handle,
+                                       &pack_info);
     dev->lastRxPacketHandle = pack_handle;
 
     // buf == NULL && len == 0 -> return packet size, no dropping
@@ -247,8 +234,7 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
           pack_details.lqi,
           pack_details.syncWordId,
           pack_details.antennaId,
-          pack_info.packetBytes
-          );
+          pack_info.packetBytes);
 
     // question: with length info in byte 0 or without?
     // first try without, skip it
@@ -294,8 +280,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
         return -ENODEV;
     }
 
-    rail_t *dev = (rail_t *) netdev;
-
+    rail_t *dev = (rail_t *)netdev;
 
     // todo necessary to differencate if transceiver is acitive or not?
     int ret = -ENOTSUP;
@@ -324,12 +309,11 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 #elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
                                                                 RAIL_TX_POWER_MODE_SUBGIG,
 #endif
-                                                                power_level_tx
-                                                                );
-            *((uint16_t *)val) = (uint16_t) power_tx_ddBm / 10;
+                                                                power_level_tx);
+            *((uint16_t *)val) = (uint16_t)power_tx_ddBm / 10;
             ret = sizeof(uint16_t);
             break;
-        case (NETOPT_RETRANS):      // todo
+        case (NETOPT_RETRANS): // todo
             break;
         case (NETOPT_PROMISCUOUSMODE):
             if (dev->promiscuousMode == true) {
@@ -342,14 +326,14 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             break;
         case (NETOPT_AUTOACK):
             if (RAIL_IsAutoAckEnabled(dev->rhandle) == true) {
-                *((netopt_enable_t *)val) =  NETOPT_ENABLE;
+                *((netopt_enable_t *)val) = NETOPT_ENABLE;
             }
             else {
-                *((netopt_enable_t *)val) =  NETOPT_DISABLE;
+                *((netopt_enable_t *)val) = NETOPT_DISABLE;
             }
             ret = sizeof(netopt_enable_t);
             break;
-        case (NETOPT_CSMA):         // todo can it be switched on / off?
+        case (NETOPT_CSMA): // todo can it be switched on / off?
             *((netopt_enable_t *)val) = NETOPT_ENABLE;
             ret = sizeof(netopt_enable_t);
             break;
@@ -361,12 +345,12 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 
         case (NETOPT_BANDWIDTH):
             /*
-               assert(max_len >= sizeof(int8_t));
-               // bits/seconds
-               uint32_t bw = RAIL_BitRateGet();
-               uint8_t bw_kb = bw/1000;
+                   assert(max_len >= sizeof(int8_t));
+                   // bits/seconds
+                   uint32_t bw = RAIL_BitRateGet();
+                   uint8_t bw_kb = bw/1000;
              *((uint8_t *)val) = bw_kb;
-               ret = sizeof(uint8_t);
+                   ret = sizeof(uint8_t);
              */
             break;
         default:
@@ -395,8 +379,8 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
         return -ENODEV;
     }
 
-    rail_t *dev = (rail_t *) netdev;
-    (void) dev;
+    rail_t *dev = (rail_t *)netdev;
+    (void)dev;
 
     DEBUG("rail_netdev->set called opt %s val %p len %d \n", netopt2str(opt), val, len);
     // bei channel, testen ob channel zur frequenz passt
@@ -410,7 +394,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
     //
     return 0;
 }
-
 
 // impl local helper functions
 
