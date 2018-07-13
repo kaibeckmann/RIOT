@@ -11,11 +11,11 @@
 
 #include "net/netdev.h"
 
-extern const netdev_driver_t rail_driver;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern const netdev_driver_t rail_driver;
 
 #ifdef __cplusplus
 }

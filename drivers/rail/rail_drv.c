@@ -14,7 +14,7 @@
 
 #include "radio.h"
 
-// gecko sdk rail lib includes
+/* gecko sdk rail lib includes*/
 #include "em_core.h"
 #include "rail.h"
 #include "rail_chip_specific.h"
@@ -24,7 +24,7 @@
 #include "rail_assert_error_codes.h"
 #include "ieee802154/rail_ieee802154.h"
 
-// riot os rail driver includes
+/* riot os rail driver includes*/
 #include "rail_drv.h"
 #include "rail_netdev.h"
 
@@ -35,8 +35,9 @@
 
 #include "log.h"
 
-////////////////////// RADIO CONFIGURATION /////////////////////////////
-// channel config for sub gig radio
+/*  RADIO CONFIGURATION */
+/* channel config for sub GHz radio 
+*/
 #if (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
 
 #if (RAIL_RADIO_BAND == 868)
@@ -47,7 +48,7 @@ static RAIL_ChannelConfigEntryAttr_t radio_channel_entry_915;
 
 static const RAIL_ChannelConfigEntry_t radio_channel_entry[] = {
 #if (RAIL_RADIO_BAND == 868)
-    { .phyConfigDeltaAdd = NULL, // Add this to default config for this entry
+    { .phyConfigDeltaAdd = NULL, /* Add this to default config for this entry */
       .baseFrequency = 868300000U,
       .channelSpacing = 600000U,
       .physicalChannelOffset = 0,
@@ -56,7 +57,7 @@ static const RAIL_ChannelConfigEntry_t radio_channel_entry[] = {
       .maxPower = RAIL_TX_POWER_MAX,
       .attr = &radio_channel_entry_868 },
 #elif (RAIL_RADIO_BAND == 915)
-    { .phyConfigDeltaAdd = NULL, // Add this to default config for this entry
+    { .phyConfigDeltaAdd = NULL, /* Add this to default config for this entry */
       .baseFrequency = 906000000U,
       .channelSpacing = 2000000U,
       .physicalChannelOffset = 1,
@@ -69,6 +70,7 @@ static const RAIL_ChannelConfigEntry_t radio_channel_entry[] = {
 
 #endif
 
+/* IEEE 802.15.4 config for 868MHz and 912MHz */
 #if (RAIL_RADIO_BAND == 868)
 
 static const uint32_t ieee802154_config_863[] = RAIL_IEEE802154_CONFIG_868MHZ;
@@ -100,20 +102,21 @@ static const RAIL_ChannelConfig_t _rail_radio_channel_config = {
 static const RAIL_IEEE802154_Config_t _rail_ieee802154_config = {
     .addresses = NULL,
     .ackConfig = {
-        .enable = true,                     // Turn on auto ACK for IEEE 802.15.4
-        .ackTimeout = 1200,                 // why 1200? docu says 54 symbols * 16 us/symbol = 864 us
+        .enable = true,                     /* Turn on auto ACK for IEEE 802.15.4 */
+        .ackTimeout = 1200,                 /* why 1200? -> docu says 54 symbols * 16 us/symbol = 864 us */
         .rxTransitions = {
-            .success = RAIL_RF_STATE_RX,    // docu says RAIL_RF_STATE_TX?
-            .error = RAIL_RF_STATE_RX       // ignored
+            .success = RAIL_RF_STATE_RX,    /* TODO docu says RAIL_RF_STATE_TX? why RX? */
+            .error = RAIL_RF_STATE_RX       /* ignored */
         },
         .txTransitions = {
             .success = RAIL_RF_STATE_RX,
-            .error = RAIL_RF_STATE_RX // ignored
+            .error = RAIL_RF_STATE_RX       /* ignored */
         }
     },
     .timings = { .idleToRx = 100,
-                    // Make txToRx slightly lower than desired to make sure we get to
-                    // RX in time
+                    /* Make txToRx slightly lower than desired to make sure we get to
+                     RX in time
+                    */
                  .txToRx = 192 - 10,
                  .idleToTx = 100,
                  .rxToTx = 192,
@@ -126,57 +129,60 @@ static const RAIL_IEEE802154_Config_t _rail_ieee802154_config = {
 
 static const RAIL_CsmaConfig_t _rail_csma_config = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
 
-// TODO use define to restrict to supported freq
+/* TODO use define to restrict to supported freq */
 RAIL_DECLARE_TX_POWER_VBAT_CURVES(piecewiseSegments, curvesSg, curves24Hp, curves24Lp);
 
-//////////////////// BUFFER MANAGEMENT //////////////////////////////////////
+/********************* BUFFER MANAGEMENT ***************************/
 
-// tx buffer
-static uint8_t _transmit_buffer[128]; // IEEE802154_FRAME_LEN_MAX + 1
+/* tx buffer */
+static uint8_t _transmit_buffer[IEEE802154_FRAME_LEN_MAX + 1];
 
-////////////////////// LOKAL VARIABLES /////////////////////////////////////
+/********************* LOKAL VARIABLES ******************************/
 
-// ref to rail_t/ netdev_t struct for this driver
-// TODO howto distiguish between multible netdevs ?
-//    necessary for multiprotocol support etc.
-// Possible solution: array an rhandle as index, key.
+/* ref to rail_t/ netdev_t struct for this driver
+   TODO howto distinguish between multible netdevs?
+   necessary for multiprotocol support, multible instances of the driver etc.
+   Possible solution: map with an rhandle as key and netdev as value?
+*/
 static rail_t *_rail_dev = NULL;
 
-///////////////////// private functions /////////////////////////////////////
+/************************ private functions *********************************/
 
+/* callback handler for RAIL driver blob, get called to handle events. 
+   The hw irqs are allready handled when called
+*/
 static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event);
 
+/*
+ * TODO docu
+ * 
+ * TODO what shall be the difference between setup and init?
+ */
 void rail_setup(rail_t *dev, const rail_params_t *params)
 {
 
     netdev_t *netdev = (netdev_t *)dev;
 
-    // register driver (defined in rail_netdev)
+    /* register driver (defined in rail_netdev) */
     netdev->driver = &rail_driver;
 
-    // init dev
+    /* init dev with params */
     memcpy(&dev->params, params, sizeof(rail_params_t));
 
-    // ?? todo
 
     DEBUG("rail->setup called\n");
 
     dev->state = RAIL_TRANSCEIVER_STATE_UNINITIALIZED;
     dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
 
-    // init other hal stuff
-    //    rail_internal_init_radio_hal(params);
-
-    //// init radio
-    //  RAIL_RfIdle();
-    //  dev->state = RAIL_TRANSCEIVER_STATE_IDLE;
 }
 
+/* init Packet Trace (PTI) functionality -> usefull for debugging */
 #if (RAIL_PTI_ENABLED == 1)
 int _rail_PTI_init(rail_t *dev)
 {
 
-    // init gpio for output
+    /* init gpio for trace output */
 
     RAIL_PtiConfig_t pti_config = RAIL_PTI_CONFIG;
 
@@ -190,10 +196,14 @@ int _rail_PTI_init(rail_t *dev)
 }
 #endif
 
+/* initialisation of the transceivers power amplifier
+   have to be called in init
+   TODO what about deep sleep?
+*/
 int _rail_PA_init(rail_t *dev)
 {
 
-    // Initialize the RAIL Tx power curves for all PAs on this chip
+    /* Initialize the RAIL Tx power curves for all PAs on this chip */
     RAIL_TxPowerCurvesConfig_t tx_power_curves_config = {
         curves24Hp,
         curvesSg,
@@ -208,15 +218,20 @@ int _rail_PA_init(rail_t *dev)
         return -1;
     }
 
-    // Power config, depends on chip etc ...
-    // TODO multi freq, mult protocol
+    /* Power config, depends on chip etc ... */
+    /* TODO 
+         - multi freq, mult protocol
+         - there are SoCs with high and low power PAs,
+            how to determain which version has this SoC?
+            atm only 2.4GHZ HighPower is supported
+    */
     RAIL_TxPowerConfig_t tx_power_config = {
 #if RAIL_RADIO_BAND == 2400
-        RAIL_TX_POWER_MODE_2P4_HP, // 2.4GHZ HighPower, TODO low power?
+        RAIL_TX_POWER_MODE_2P4_HP, 
 #elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
         RAIL_TX_POWER_MODE_SUBGIG,
 #endif
-        RAIL_RADIO_PA_VOLTAGE, // voltage vPA for the DCDC connection
+        RAIL_RADIO_PA_VOLTAGE, /* voltage vPA for the DCDC connection */
         10
     };
 
@@ -247,19 +262,19 @@ int rail_init(rail_t *dev)
 
     netdev_ieee802154_t *netdev = (netdev_ieee802154_t *)dev;
 
-    // save ref for this driver, for global access
-    // TODO multible instances?
+    /* save ref for this driver, for global access (esp in rail event handler) */
+    /* TODO multible instances? */
     _rail_dev = dev;
 
     DEBUG("rail_init called\n");
 
     dev->state = RAIL_TRANSCEIVER_STATE_UNINITIALIZED;
 
-    // start with long addr mode.
+    /* start with long addr mode. */
     netdev->flags |= NETDEV_IEEE802154_SRC_MODE_LONG;
 
-    // get informations about the used raillib
-    // TODO check if driver is compatible?
+    /* get informations about the used raillib */
+    /* TODO check if driver is compatible? */
     RAIL_Version_t rail_version;
     RAIL_GetVersion(&rail_version, true);
 
@@ -267,23 +282,24 @@ int rail_init(rail_t *dev)
           rail_version.major, rail_version.minor, rail_version.rev, rail_version.build,
           rail_version.multiprotocol ? "YES" : "NO");
 
-    // init rail blob config
-    // set to zero, because manual request it
+    /* init rail blob config
+    set to zero, because API manual request it
+    */
     memset(&(dev->rconfig), 0, sizeof(RAIL_Config_t));
 
-    dev->rconfig.eventsCallback = &_rail_radio_event_handler,
-    dev->rconfig.protocol = NULL,
-    dev->rconfig.scheduler = NULL,
+    dev->rconfig.eventsCallback = &_rail_radio_event_handler;
+    dev->rconfig.protocol = NULL;
+    dev->rconfig.scheduler = NULL;
 
-    // Init rail instance
+    /* Init rail driver blob instance */
     dev->rhandle = RAIL_Init(&(dev->rconfig), NULL);
 
     if (dev->rhandle == NULL) {
-        LOG_ERROR("Can not init rail driver\n");
+        LOG_ERROR("Can not init rail blob driver\n");
         return -1;
     }
 
-    // config data management, easier version with packets
+    /* config data management, easier version with packets */
 
     static const RAIL_DataConfig_t rail_data_config = {
         TX_PACKET_DATA,
@@ -299,7 +315,7 @@ int rail_init(rail_t *dev)
         return -1;
     }
 
-    // config calibration
+    /* config transceiver calibration (freq depends on temperature etc) */
 
     ret = RAIL_ConfigCal(dev->rhandle, RAIL_CAL_ALL);
 
@@ -308,18 +324,20 @@ int rail_init(rail_t *dev)
         return -1;
     }
 
-    // configure the channels (802.15.4)
+    /* configure the channels for 802.15.4 */
 
-    // if 2.4 GHz channel config and radio config are done by
-    // RAIL_IEEE802154_2p4GHzRadioConfig()
+    
 #if RAIL_RADIO_BAND == 2400
-
+    /* for 2.4 GHz the RAIL API provides a std conform default config */
     DEBUG("using 2.4GHz radio band\n");
     ret = RAIL_IEEE802154_Config2p4GHzRadio(dev->rhandle);
 
 #elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
-
-    // currently the calls are the same, might change, better seperate, than later forgotten
+    /* there is no default config, so we have to do it manually (or copied from
+       openthread/mbed)
+       currently the calls are the same, might change if RAIL API functions
+       became available
+    */
 #if (RAIL_RADIO_BAND == 868)
     DEBUG("using 868MHz radio band\n");
     ret = RAIL_ConfigChannels(dev->rhandle, &_rail_radio_channel_config, NULL);
@@ -335,7 +353,7 @@ int rail_init(rail_t *dev)
         return -1;
     }
 
-    // init IEEE802.15.4 acceleration features
+    /* init IEEE802.15.4 acceleration features  */
 
     ret = RAIL_IEEE802154_Init(dev->rhandle, &_rail_ieee802154_config);
     if (ret != RAIL_STATUS_NO_ERROR) {
@@ -343,7 +361,7 @@ int rail_init(rail_t *dev)
         return -1;
     }
 
-    // init radio PA
+    /* init radio PA */
 
     r = _rail_PA_init(dev);
 
@@ -351,19 +369,26 @@ int rail_init(rail_t *dev)
         return r;
     }
 
-    // setup transmitt buffer
+    /* setup transmitt buffer */
     ret = RAIL_SetTxFifo(dev->rhandle, _transmit_buffer, 0, sizeof(_transmit_buffer));
 
-    // setup PTI
+    /* setup PTI */
 #if (RAIL_PTI_ENABLED == 1)
     r = _rail_PTI_init(dev);
     assert(r == 0);
 #endif
 
-    // if pan coord
-    // setpancoord
+    /* TODO
+         - how to figure out if this device is the PAN coord?
+    */
 
-    // get mac addr from SoC
+
+    /* get mac addr from SoC */
+    /* this is a bit messy, because everthing has or what it in different
+       endianess
+       for convenience we read it once and save it in the netdev structure in 
+       big endianess
+    */
     uint32_t tmp = DEVINFO->UNIQUEL;
     dev->eui.uint64 = byteorder_htonll((uint64_t)((uint64_t)DEVINFO->UNIQUEH << 32) | tmp);
 
@@ -377,7 +402,7 @@ int rail_init(rail_t *dev)
           dev->eui.uint8[6],
           dev->eui.uint8[7]);
 
-    // set panid TODO if in dev, than that?
+    /* TODO provide default PANID / NID by params? */
     DEBUG("Set PanID to 0x%04x\n", RAIL_DEFAULT_PANID);
 
     netdev->pan = RAIL_DEFAULT_PANID;
@@ -387,22 +412,24 @@ int rail_init(rail_t *dev)
         DEBUG("Can not set PAN ID %d\n", RAIL_DEFAULT_PANID);
     }
 
-    // set short addr
+    /* set short addr */
     DEBUG("Set ShortAddr 0x%04x\n", ntohs(dev->eui.uint16[3].u16));
 
+    /* yeah riot what it in big endian*/
     memcpy(netdev->short_addr, &dev->eui.uint16[3].u16, 2);
 
+    /* rail what it in big endian as well, but the hw stores it in little ...*/
     bRet = RAIL_IEEE802154_SetShortAddress(dev->rhandle, dev->eui.uint16[3].u16, 0);
     if (bRet != true) {
         DEBUG("Can not set short addr\n");
     }
 
-    // set long addr
+    /* set long addr */
     DEBUG("Set LongAddr 0x%08lx%08lx\n", ntohl(dev->eui.uint64.u32[0]), ntohl(dev->eui.uint64.u32[1]));
 
     memcpy(netdev->long_addr, &dev->eui.uint8, IEEE802154_LONG_ADDRESS_LEN);
 
-    // reversed order, because thats what rails want
+    /* but for the long address, it have to be little endian aka reversed order */
     uint64_t addr_rev = byteorder_ntohll(dev->eui.uint64);
 
     bRet = RAIL_IEEE802154_SetLongAddress(dev->rhandle, (uint8_t *)&addr_rev, 0);
@@ -410,24 +437,19 @@ int rail_init(rail_t *dev)
         DEBUG("Can not set long addr\n");
     }
 
-    // get transmitt power
-    RAIL_TxPowerLevel_t power_level_tx = RAIL_GetTxPower(dev->rhandle);
-    RAIL_TxPower_t power_tx_ddBm = RAIL_ConvertRawToDbm(dev->rhandle,
-#if RAIL_RADIO_BAND == 2400
-                                                        RAIL_TX_POWER_MODE_2P4_HP, // 2.4GHZ HighPower, TODO low power?
-#elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
-                                                        RAIL_TX_POWER_MODE_SUBGIG,
-#endif
-                                                        power_level_tx);
+    /* get transmitt power, TODO only for debug mode */
 
-    DEBUG("TX Power set to raw: %hhu %hd deci dBm\n", power_level_tx, power_tx_ddBm);
+    RAIL_TxPower_t power_tx_ddBm = RAIL_GetTxPowerDbm(dev->rhandle);
 
-    // config events
-    // it is possible to get all events with RAIL_EVENTS_ALL
+    DEBUG("TX Power set to %hd deci dBm\n", power_tx_ddBm);
+
+    /* configure the RAIL driver blob events we want the receive
+       it is possible to get all events with RAIL_EVENTS_ALL
+    */
 
     ret = RAIL_ConfigEvents(dev->rhandle,
-                            RAIL_EVENTS_ALL,    // mask of events should be mod
-                                                // events to subsripe
+                            RAIL_EVENTS_ALL,    /* mask of events, which should be modified, here all */
+                                                /* events to subscribe */
                             RAIL_EVENT_RX_ACK_TIMEOUT |
                             RAIL_EVENT_RX_FRAME_ERROR |
                             RAIL_EVENT_RX_ADDRESS_FILTERED |
@@ -445,41 +467,45 @@ int rail_init(rail_t *dev)
         return -1;
     }
 
-    // put radio to idle mode
-    // TODO not needed anymore?
-    // RAIL_Idle(dev->rhandle, RAIL_IDLE, true);
-
-    // dev->state = RAIL_TRANSCEIVER_STATE_IDLE;
+    /* TODO use / set some state? */
 
     DEBUG("rail_init done\n");
-    LOG_INFO("rail radio initialised\n");
+    LOG_INFO("rail radio driver initialised\n");
 
     return 0;
 }
 
+/* TODO
+    - docu
+    - rename to transmit_packet, frames are done a layer above 
+ */
 int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
 {
     DEBUG("rail_transmit_frame called\n");
 
-    // set frame length to first byte (I wonder where it is documented?)
-    data_ptr[0] = (uint8_t)data_length + 1; //-1; // todo check if -1 is ok // ggf. +2 for crc?
+    /* set frame length to first byte (I wonder where this is actually documented?) */
+    data_ptr[0] = (uint8_t)data_length + 1; 
 
-    // write frame to buffer
+    /* write packet payload in the buffer of the rail driver blob*/
     RAIL_WriteTxFifo(dev->rhandle, data_ptr, data_length + 1, true);
 
-    // config tx options
+    /* config tx options, here just the defaults*/
     RAIL_TxOptions_t tx_option = RAIL_TX_OPTIONS_DEFAULT;
 
+    /* TODO internal state */
     dev->state = RAIL_TRANSCEIVER_STATE_TX;
 
-    // check if ack req
+    /* check if ack req is requested */
     if (dev->netdev.flags & NETDEV_IEEE802154_ACK_REQ) {
         tx_option |= RAIL_TX_OPTION_WAIT_FOR_ACK;
         DEBUG("tx option auto ack\n");
-        // TODO wait for ack
+        /* TODO wait for ack, necessary or done by layer above? */
     }
 
     DEBUG("[rail] transmit - radio state: %s\n", rail_radioState2str(RAIL_GetRadioState(dev->rhandle)));
+    
+    /* TODO depending on CSMA config / setting, different function to call?
+    */
     RAIL_Status_t ret = RAIL_StartCcaCsmaTx(dev->rhandle,
                                             dev->netdev.chan,
                                             tx_option,
@@ -492,25 +518,29 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
     }
     DEBUG("Started transmit\n");
 
-    // TODO symetric blocking call. should be done by callback
-    // while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX );
-
+    /* TODO 
+       - if this should be asymmetric blocking call, we have to wait for the
+         tx done event by the callback 
+        - or use while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX );
+    */
     return 0;
 }
 
 int rail_start_rx(rail_t *dev)
 {
 
-    // check state
-    // if uninit/init etc/ returnerror;
-    // if calibrate, error
-    // tx error
-    // if idle and rx
-    //    if waiting for ack
-    //      no timeout? error
-    //      timeout?, stats++, cont
-    //
-    // check if set?
+    /* 
+    TODO process:
+        check state
+        if uninit/init etc/ -> error;
+        if calibrate || error
+            -> tx error
+        if idle and rx
+            if waiting for ack
+                no timeout? error
+            timeout?, stats++, cont
+    */
+    /* check if set? or just a global setting? */
     if (dev->promiscuousMode == true) {
         RAIL_IEEE802154_SetPromiscuousMode(dev->rhandle, true);
     }
@@ -518,136 +548,152 @@ int rail_start_rx(rail_t *dev)
         RAIL_IEEE802154_SetPromiscuousMode(dev->rhandle, false);
     }
 
-    // for debugging purpose -> receive everything ;)
 
-    // set channel to listen to
+    /* set channel to listen to */
     RAIL_StartRx(dev->rhandle, dev->netdev.chan, NULL);
     dev->state = RAIL_TRANSCEIVER_STATE_RX;
     return 0;
 }
 
-// rail blob event / interrupt handler
-// TODO move this part into the netdev->_isr function?
+/* RAIL blob event handler, this is not a ISR handler! */
+/* TODO what parts can be moved to the netdev->_isr function?
+*/
 static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event)
 {
 
-    // TODO get the rigth netdev struct
+    /* TODO get the right netdev struct */
     rail_t *dev = _rail_dev;
 
-    // rail events are a bitmask, therefore multible events within this call
-    // possible
-    // event description c&p from rail api docu
+    /* rail events are a bitmask, therefore multible events within this call
+       possible
+    */
 
-    // Notifies the application when searching for an ack packet has timed out
+    /* event description c&p from RAIL API docu */
+
+    /* Notifies the application when searching for an ack packet has timed out */
     if (event & RAIL_EVENT_RX_ACK_TIMEOUT) {
         DEBUG("Rail event RX ACK TIMEOUT\n");
-        // ack timeout for tx acks? TODO confirm
+        /* ack timeout for tx acks? TODO confirm */
         dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_NOACK);
     }
 
-    // Occurs when a packet being received has a frame error
+    /* Occurs when a packet being received has a frame error */
     if (event & RAIL_EVENT_RX_FRAME_ERROR) {
         DEBUG("Rail event RX frame error\n");
         dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_CRC_ERROR);
 
-        // TODO statistic?
+        /* TODO statistic? */
     }
 
-    // Occurs when a packet's address does not match the filtering settings
+    /* Occurs when a packet's address does not match the filtering settings */
     if (event & RAIL_EVENT_RX_ADDRESS_FILTERED) {
         DEBUG("Rail event rx address filtered\n");
     }
 
-    //	Occurs whenever a packet is received
+    /*	Occurs whenever a packet is received */
     if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
         DEBUG("Rail event rx packet received\n");
 
-        // check if packet is ok
+        /* check if packet is ok */
         RAIL_RxPacketInfo_t rx_packet_info;
-        RAIL_RxPacketHandle_t rx_handle = RAIL_GetRxPacketInfo(rhandle,
-                                                               RAIL_RX_PACKET_HANDLE_NEWEST,
-                                                               &rx_packet_info);
+        RAIL_RxPacketHandle_t rx_handle;
+        rx_handle = RAIL_GetRxPacketInfo(rhandle,
+                                        RAIL_RX_PACKET_HANDLE_NEWEST,
+                                        &rx_packet_info);
 
-        DEBUG("[rail] rx packet event - len p 0x%02x - len2 0x%02x\n", rx_packet_info.firstPortionData[0], rx_packet_info.packetBytes);
+        DEBUG("[rail] rx packet event - len p 0x%02x - len2 0x%02x\n", 
+                rx_packet_info.firstPortionData[0], rx_packet_info.packetBytes);
+
         if (rx_packet_info.packetStatus != RAIL_RX_PACKET_READY_SUCCESS) {
-            // error
-            DEBUG("Got an packet with an error - packet status msg: %s \n", rail_packetStatus2str(rx_packet_info.packetStatus));
+            /* error */
+
+            DEBUG("Got an packet with an error - packet status msg: %s \n", 
+                        rail_packetStatus2str(rx_packet_info.packetStatus));
+
             dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_CRC_ERROR);
             RAIL_ReleaseRxPacket(rhandle, rx_handle);
         }
         else {
-            DEBUG("Rail event rx packet  good packet \n");
-            // hold packet so it can be received from user thread context
+            DEBUG("Rail event rx packet good packet \n");
+            /* hold packet so it can be received from netdev thread context */
             RAIL_HoldRxPacket(rhandle);
-            DEBUG("Rail event rx packet  hold packet \n");
+
+            /* delegate to the _isr, even if there is nothing to do ...*/
             dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_ISR);
-            DEBUG("Rail event rx packet  after netdev callback \n");
         }
     }
 
-    // RAIL_EVENT_RX_PACKET_ABORTED
-    //Occurs when a packet is aborted, but a more specific reason (such as
-    // RAIL_EVENT_RX_ADDRESS_FILTERED) isn't known.
+    /* TODO RAIL_EVENT_RX_PACKET_ABORTED */
+    /* Occurs when a packet is aborted, but a more specific reason (such as
+     RAIL_EVENT_RX_ADDRESS_FILTERED) isn't known.
+    */
 
-    // Occurs when a packet was sent
+    /* Occurs when a packet was sent */
     if (event & RAIL_EVENT_TX_PACKET_SENT) {
         DEBUG("Rail event Tx packet sent \n");
 
         dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_COMPLETE);
 
-        // TODO set state?
+        /* TODO set state? */
     }
 
-    //
-    // RAIL_EVENT_TXACK_PACKET_SENT
-    // Occurs when an ack packet was sent.
+    
+    /* TODO RAIL_EVENT_TXACK_PACKET_SENT */
+    /* Occurs when an ack packet was sent. */
 
     if (event & RAIL_EVENT_TX_CHANNEL_BUSY) {
         DEBUG("Rail event Tx channel busy\n");
         dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_MEDIUM_BUSY);
 
-        // TODO set state?
+        /* TODO set state? */
     }
 
-    // Occurs when a transmit is aborted by the user
+    /* Occurs when a transmit is aborted by the user */
     if (event & RAIL_EVENT_TX_ABORTED) {
         DEBUG("Rail event Tx aborted\n");
 
-        // TODO set state?
+        /* TODO set state? */
     }
 
-    // RAIL_EVENT_TXACK_ABORTED
-    // Occurs when a transmit is aborted by the user
+    /* TODO RAIL_EVENT_TXACK_ABORTED */
+    /* Occurs when a transmit is aborted by the user */
 
-    //  Occurs when a transmit is blocked from occurring due to having called
-    //  RAIL_EnableTxHoldOff().
+    /*  Occurs when a transmit is blocked from occurring due to having called
+        RAIL_EnableTxHoldOff().
+    */
     if (event & RAIL_EVENT_TX_BLOCKED) {
         DEBUG("Rail event Tx blocked\n");
 
-        // TODO set state?
+        /* TODO how to notify layer above? */
+        /* TODO set state? */
     }
 
-    // RAIL_EVENT_TXACK_BLOCKED
-    //  Occurs when an ack transmit is blocked from occurring due to having
-    //  called RAIL_EnableTxHoldOff().
+    /* TODO RAIL_EVENT_TXACK_BLOCKED */
+    /*  Occurs when an ack transmit is blocked from occurring due to having
+        called RAIL_EnableTxHoldOff().
+    */
 
-    // Occurs when the transmit buffer underflows.
+    /* Occurs when the transmit buffer underflows. */
     if (event & RAIL_EVENT_TX_UNDERFLOW) {
         DEBUG("Rail event Tx underflow - > should not happen\n");
+        /* should not happen as long as the packet is written as whole into the
+        RAIL driver blob buffer*/
     }
 
-    // RAIL_EVENT_TXACK_UNDERFLOW
-    // Occurs when the ack transmit buffer underflows.
+    /* RAIL_EVENT_TXACK_UNDERFLOW */
+    /* Occurs when the ack transmit buffer underflows.*/
 
-    // Indicates a Data Request is being received when using IEEE 802.15.4 functionality.
+    /* Indicates a Data Request is being received when using IEEE 802.15.4
+    functionality. */
     if (event & RAIL_EVENT_IEEE802154_DATA_REQUEST_COMMAND) {
-        // TODO what is source match? and why might it be neccessary to filter
-        // here the packet?
+        /* TODO what is source match? and why might it be necessary to filter
+         here the packet?
+        */
         DEBUG("Rail event ieee 802.15.4 data request command\n");
         RAIL_IEEE802154_SetFramePending(rhandle);
     }
 
-    // Occurs when the application needs to run a calibration.
+    /* Occurs when the application needs to run a calibration.*/
     if (event & RAIL_EVENT_CAL_NEEDED) {
 
         DEBUG("Rail event calibration needed \n");

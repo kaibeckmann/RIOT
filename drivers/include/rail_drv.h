@@ -27,8 +27,11 @@ extern "C" {
 #endif
 
 
-// states of the radio transceiver
-/* todo use enum?*/
+/* states of the radio transceiver */
+/* TODO 
+    - use enum?
+    - use !
+*/
 #define RAIL_TRANSCEIVER_STATE_UNINITIALIZED    0x00
 #define RAIL_TRANSCEIVER_STATE_IDLE             0x01
 #define RAIL_TRANSCEIVER_STATE_SLEEP            0x02
@@ -56,12 +59,12 @@ typedef struct {
     netdev_ieee802154_t netdev;
     rail_params_t params;
 
-    // handle of the rail blob driver instance
+    /* handle of the RAIL driver blob instance */
     RAIL_Handle_t rhandle;
-    // config of the rail blob driver
+    /* config of the RAIL driver blob */
     RAIL_Config_t rconfig;
 
-    uint8_t state;              // state of radio
+    uint8_t state;              /* state of radio transceiver */
 
     RAIL_RxPacketHandle_t lastRxPacketHandle;
 
