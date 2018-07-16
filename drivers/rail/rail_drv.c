@@ -127,7 +127,7 @@ static const RAIL_IEEE802154_Config_t _rail_ieee802154_config = {
     .isPanCoordinator = false
 };
 
-static const RAIL_CsmaConfig_t _rail_csma_config = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
+static const RAIL_CsmaConfig_t _rail_csma_default_config = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
 
 /* TODO use define to restrict to supported freq */
 RAIL_DECLARE_TX_POWER_VBAT_CURVES(piecewiseSegments, curvesSg, curves24Hp, curves24Lp);
@@ -177,6 +177,9 @@ void rail_setup(rail_t *dev, const rail_params_t *params)
 
     dev->state = RAIL_TRANSCEIVER_STATE_UNINITIALIZED;
     dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
+
+    /* TODO config for 868/912MHz different? */
+    dev->csma_config = _rail_csma_default_config;
 
 }
 
@@ -507,12 +510,12 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
 
     DEBUG("[rail] transmit - radio state: %s\n", rail_radioState2str(RAIL_GetRadioState(dev->rhandle)));
     
-    /* TODO depending on CSMA config / setting, different function to call?
+    /* start tx with settings in csma_config
     */
     RAIL_Status_t ret = RAIL_StartCcaCsmaTx(dev->rhandle,
                                             dev->netdev.chan,
                                             tx_option,
-                                            &_rail_csma_config,
+                                            &dev->csma_config,
                                             NULL);
 
     if (ret != RAIL_STATUS_NO_ERROR) {

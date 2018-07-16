@@ -61,6 +61,7 @@ extern "C" {
 
 #define RAIL_DEFAULT_PANID         (IEEE802154_DEFAULT_PANID)
 #define RAIL_DEFAULT_TXPOWER       (IEEE802154_DEFAULT_TXPOWER)
+#define RAIL_DEFAULT_CSMA_TRIES     5
 
 enum rail_transceiver_config_frequency {
     RAIL_TRANSCEIVER_FREQUENCY_2P4GHZ,
@@ -82,6 +83,8 @@ typedef struct {
     RAIL_Handle_t rhandle;
     /* config of the RAIL driver blob */
     RAIL_Config_t rconfig;
+    /* config for CSMA */
+    RAIL_CsmaConfig_t csma_config;
 
     uint8_t state;              /* state of radio transceiver */
 

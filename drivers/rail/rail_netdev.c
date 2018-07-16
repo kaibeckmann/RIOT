@@ -49,9 +49,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len);
 /* buffer for outgoing frame */
 static uint8_t frame[IEEE802154_FRAME_LEN_MAX + 1];
 
-/* RAIL default config for CSMA on 2.4 GHz */
-/* TODO settings for 868MHz and 912MHz? */
-static const RAIL_CsmaConfig_t csma_config = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
 
 /* local helper functions */
 static netopt_state_t _get_state(rail_t *dev);
@@ -283,6 +280,11 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
           pack_details.syncWordId,
           pack_details.antennaId,
           pack_info.packetBytes);
+    
+#ifdef MODULE_NETSTATS_L2
+    netdev->stats.rx_count++;
+    netdev->stats.rx_bytes += pack_info.packetBytes;
+#endif
 
     /* TODO question: with length info in byte 0 or without? */
     /*  - first try without, skip it (seams to work) */
@@ -292,6 +294,8 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 
     /* copy payload from packet to the provided buffer */
     RAIL_CopyRxPacket((uint8_t *)buf, &pack_info);
+
+
 
     /*
        DEBUG("Print buf cpy size %d: ", cpy_size);
@@ -389,13 +393,20 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             ret = sizeof(netopt_enable_t);
             break;
         case (NETOPT_CSMA): 
-            /* TODO enable / disable ? */
-            *((netopt_enable_t *)val) = NETOPT_ENABLE;
+            /* if tries == 0 -> CSMA is disabled, or rather the packet is send
+            immediately 
+            */
+            if (dev->csma_config.csmaTries == 0) {
+                    *((netopt_enable_t *)val) = NETOPT_DISABLE;
+            }
+            else {
+                *((netopt_enable_t *)val) = NETOPT_ENABLE;
+            }
             ret = sizeof(netopt_enable_t);
             break;
         case (NETOPT_CSMA_RETRIES):
             assert(max_len >= sizeof(int8_t));
-            *((uint8_t *)val) = csma_config.csmaTries;
+            *((uint8_t *)val) = dev->csma_config.csmaTries;
             ret = sizeof(uint8_t);
             break;
 
@@ -590,8 +601,28 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             res = sizeof(netopt_enable_t);
             break;
         case (NETOPT_CSMA):
+            /* deactivate CSMA */
+            if (((const bool *)val)[0] == false) {
+                dev->csma_config.csmaTries = 0;
+            } 
+            else {
+                // set it to the default value?
+                dev->csma_config.csmaTries = RAIL_DEFAULT_CSMA_TRIES;
+            }
+            res = sizeof(netopt_enable_t);
             break;
         case (NETOPT_CSMA_RETRIES):
+            assert(len <= sizeof(uint8_t));
+            /* tries == 0 -> CSMA is disabled */
+            if (dev->csma_config.csmaTries == 0 ||
+                (*((uint8_t *)val) > RAIL_MAX_LBT_TRIES)) {
+                /* If CSMA is disabled, don't allow setting retries */
+                res = -EINVAL;
+            }
+            else {
+                dev->csma_config.csmaTries = *((const uint8_t *)val);
+                res = sizeof(uint8_t);
+            }
             break;
         case (NETOPT_CCA_THRESHOLD):
             assert(len <= sizeof(int8_t));
@@ -622,9 +653,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
         - NETOPT_CHANNEL_PAGE // how? what is it? relevant?
         - NETOPT_AUTOACK
         - NETOPT_RETRANS
-        - NETOPT_CSMA
-        - NETOPT_CSMA_RETRIES
-
 
         - bool     RAIL_IEEE802154_IsEnabled (void) ?
         - void 	RAIL_EnableTxHoldOff (RAIL_Handle_t railHandle, bool enable)
