@@ -30,7 +30,7 @@
 
 #include "log.h"
 
-#define ENABLE_DEBUG (1)
+#define ENABLE_DEBUG (0)
 #include "debug.h"
 
 #include "rail.h"
@@ -64,7 +64,8 @@ const netdev_driver_t rail_driver = {
 };
 
 
-static inline int rail_map_rail_status2errno(RAIL_Status_t code) {
+static inline int rail_map_rail_status2errno(RAIL_Status_t code)
+{
     switch (code) {
         case (RAIL_STATUS_NO_ERROR):
             return 0;
@@ -135,15 +136,15 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
     rail_t *dev = (rail_t *)netdev;
 
     /*
-    TODO check current state, make it depend what to do
-    if tx, return error
-    if init or so return error
-    if calibaration error
-    if idle or rx, send
+       TODO check current state, make it depend what to do
+       if tx, return error
+       if init or so return error
+       if calibaration error
+       if idle or rx, send
         if waiting for ack
           no timeout return error
           timeout update stat and continue
-    */
+     */
 
     /* prepare frame, cpy header and payload */
     size_t len = 1; /* start with 1, first byte have to be the length */
@@ -184,47 +185,47 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
     RAIL_Status_t ret;
 
     /*
-    the "receiving of a packet" becomes a bit ugly, since the riot driver api is
-    optimized for low level hardware interaction. Here the silabs driver blob
-    already did the whole low level hw interaction. By the time this methode is
-    called the whole packet is already read and stored in memory. 
-    Normally the packet have to be processed within the registered handler of
-    the driver blob. It is possible to hold a packet, to process it later, as in
-    in this methode. 
-    With RAIL_RX_PACKET_HANDLE_OLDEST a handle to the oldest not processed
-    packet is accessable, but because the _recv methode is called several times
-    by the upper protocol layer it is possible this reference changes. Therefore
-    it have to be stored, for the next call of _recv(). 
-    After processing the packet it has to be released with
-    RAIL_ReleaseRxPacket().
-    
-    TODO
-     - What if there are more packets waiting? How to loop through them?
-     - What if this method is called, because a new packet arrived and the stack
-       is still busy processing the first? 
-     - Or worst, if it causes a race condition?
-     - What if for whatever reason the upper layer does only call this methode
+       the "receiving of a packet" becomes a bit ugly, since the riot driver api is
+       optimized for low level hardware interaction. Here the silabs driver blob
+       already did the whole low level hw interaction. By the time this methode is
+       called the whole packet is already read and stored in memory.
+       Normally the packet have to be processed within the registered handler of
+       the driver blob. It is possible to hold a packet, to process it later, as in
+       in this methode.
+       With RAIL_RX_PACKET_HANDLE_OLDEST a handle to the oldest not processed
+       packet is accessable, but because the _recv methode is called several times
+       by the upper protocol layer it is possible this reference changes. Therefore
+       it have to be stored, for the next call of _recv().
+       After processing the packet it has to be released with
+       RAIL_ReleaseRxPacket().
+
+       TODO
+       - What if there are more packets waiting? How to loop through them?
+       - What if this method is called, because a new packet arrived and the stack
+       is still busy processing the first?
+       - Or worst, if it causes a race condition?
+       - What if for whatever reason the upper layer does only call this methode
        once for a packet? Than the dev->lastRxPacketHandle would not be reset
        and the next call for a suppost new packet would yield the packet before.
-    */
+     */
 
     /* if this is the first call for a new packet, the handle is (have to be)
-    invalid */ 
+       invalid */
     if (dev->lastRxPacketHandle == RAIL_RX_PACKET_HANDLE_INVALID) {
         /* get the oldest not yet processed packet */
         pack_handle = RAIL_RX_PACKET_HANDLE_OLDEST;
     }
     else {
-        /* otherwise this is the second, third ... call 
+        /* otherwise this is the second, third ... call
            we use the saved handle form the call before */
-    
+
         pack_handle = dev->lastRxPacketHandle;
     }
 
     /* first packet info -> payload length and the handle of the packet
        if pack_handle is RAIL_RX_PACKET_HANDLE_OLDEST, we get the oldest not
        processed packet, otherwise the function returns the same handle as given
-    */
+     */
     pack_handle = RAIL_GetRxPacketInfo(dev->rhandle,
                                        pack_handle,
                                        &pack_info);
@@ -247,9 +248,9 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
     }
 
     /* hurray, we are finally at the stage to move the payload to the upper
-    layer
-    */
-    
+       layer
+     */
+
 
     /* clear info struct */
     memset(&pack_details, 0, sizeof(RAIL_RxPacketDetails_t));
@@ -280,7 +281,7 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
           pack_details.syncWordId,
           pack_details.antennaId,
           pack_info.packetBytes);
-    
+
 #ifdef MODULE_NETSTATS_L2
     netdev->stats.rx_count++;
     netdev->stats.rx_bytes += pack_info.packetBytes;
@@ -325,8 +326,8 @@ static void _isr(netdev_t *netdev)
 {
     DEBUG("rail_netdev->isr called\n");
     /* there is not much we can do here, because what is normally is done here,
-    is allready done by the driver blob and the _rail_radio_event_handler. 
-    */
+       is allready done by the driver blob and the _rail_radio_event_handler.
+     */
     netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
 }
 static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
@@ -338,15 +339,15 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 
     rail_t *dev = (rail_t *)netdev;
 
-    /* TODO 
+    /* TODO
         - is it necessary to differencate if transceiver is active or not?
         - What is a channel page and how to get this info out of the RAIL API?
-        - NETOPT_RETRANS 
+        - NETOPT_RETRANS
         - Can CSMA be switched on / off and if yes how?
         - NETOPT_BANDWIDTH could be calculated, but is it usefull?
         - NETOPT_CHANNEL_FREQUENCY
         - NETOPT_AUTOCCA
-    */
+     */
     int ret = -ENOTSUP;
 
     switch (opt) {
@@ -355,7 +356,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             *((uint16_t *)val) = IEEE802154_FRAME_LEN_MAX;
             ret = sizeof(uint16_t);
             break;
-        case (NETOPT_CHANNEL_PAGE): 
+        case (NETOPT_CHANNEL_PAGE):
             /* TODO */
             break;
         case (NETOPT_STATE):
@@ -371,7 +372,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             *((uint16_t *)val) = (int16_t) (power_tx_ddBm / 10);
             ret = sizeof(int16_t);
             break;
-        case (NETOPT_RETRANS): 
+        case (NETOPT_RETRANS):
             /* TODO */
             break;
         case (NETOPT_PROMISCUOUSMODE):
@@ -392,12 +393,12 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             }
             ret = sizeof(netopt_enable_t);
             break;
-        case (NETOPT_CSMA): 
+        case (NETOPT_CSMA):
             /* if tries == 0 -> CSMA is disabled, or rather the packet is send
-            immediately 
-            */
+               immediately
+             */
             if (dev->csma_config.csmaTries == 0) {
-                    *((netopt_enable_t *)val) = NETOPT_DISABLE;
+                *((netopt_enable_t *)val) = NETOPT_DISABLE;
             }
             else {
                 *((netopt_enable_t *)val) = NETOPT_ENABLE;
@@ -422,7 +423,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             break;
         default:
             /* DEBUG("not supported netopt code at rail drv %d str %s \n", opt,
-            netopt2str(opt)); */
+               netopt2str(opt)); */
             break;
     }
     if (ret != -ENOTSUP) {
@@ -442,7 +443,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 
 static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
 {
-    
+
 
     if (netdev == NULL) {
         return -ENODEV;
@@ -455,36 +456,36 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
     uint64_t le_u64;
 
     /* TODO wake up transceiver? necessary? or done automaticaly by RAIL driver
-    blob?
-    */
+       blob?
+     */
 
-     switch (opt) {
+    switch (opt) {
 
-         case (NETOPT_CHANNEL):
+        case (NETOPT_CHANNEL):
             /* since we have to provide the channel for each tx or rx, just
-            change the attribute in the netdev struct */
+               change the attribute in the netdev struct */
             assert(len == sizeof(uint16_t));
             uint8_t chan = (((const uint16_t *)val)[0]) & UINT8_MAX;
-            
+
             if (dev->params.freq == RAIL_TRANSCEIVER_FREQUENCY_2P4GHZ) {
                 if (chan < RAIL_2P4GH_MIN_CHANNEL || chan > RAIL_2P4GH_MAX_CHANNEL) {
                     res = -EINVAL;
                     break;
                 }
-            } 
+            }
             else if (dev->params.freq == RAIL_TRANSCEIVER_FREQUENCY_868MHZ) {
                 /* 868MHz has only one channel, channel 0! */
                 if (chan != RAIL_868MHZ_DEFAULT_CHANNEL) {
                     res = -EINVAL;
                     break;
                 }
-            } 
+            }
             else if (dev->params.freq == RAIL_TRANSCEIVER_FREQUENCY_912MHZ) {
                 if (chan > RAIL_912MHZ_MAX_CHANNEL) {
                     res = -EINVAL;
                     break;
                 }
-            } 
+            }
             else {
                 res = -EINVAL;
                 LOG_ERROR("Unknown radio frequency configured\n");
@@ -492,13 +493,13 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
                 break;
             }
             /* since we have to provide the channel for each tx or rx, just
-            change the attribute in the netdev struct */
+               change the attribute in the netdev struct */
             /* TODO if chan_old != chan_new -> interupt rx op? */
             /* don't set res to set netdev_ieee802154_t::chan */
             dev->netdev.chan = chan;
-                
+
             break;
-         case (NETOPT_CHANNEL_PAGE):
+        case (NETOPT_CHANNEL_PAGE):
             /* TODO?? */
             break;
         case (NETOPT_ADDRESS):
@@ -510,16 +511,16 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             /* RAIL driver blob can manage upto RAIL_IEEE802154_MAX_ADDRESSES
                TODO how does RIOT handle multible short addresses?
                atm just at pos 0
-            */
+             */
             rail_ret = RAIL_IEEE802154_SetShortAddress(dev->rhandle, le_u16, 0);
-            
+
             if (rail_ret != RAIL_STATUS_NO_ERROR) {
-                LOG_ERROR("[rail] error setting short address: msg: %s\n", 
-                            rail_error2str(rail_ret));
+                LOG_ERROR("[rail] error setting short address: msg: %s\n",
+                          rail_error2str(rail_ret));
                 res = -EFAULT;
                 break;
             }
-            
+
             /* don't set res to set netdev_ieee802154_t::short_addr */
             break;
         case (NETOPT_ADDRESS_LONG):
@@ -527,17 +528,17 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             /* RAIL driver blob can manage upto RAIL_IEEE802154_MAX_ADDRESSES
                TODO how does RIOT handle multible long addresses?
                atm just at pos 0
-            */
+             */
             /* now the long addr ... the RAIL API docu says it have to be in
-            "over the air byte order", therefore little endian again ... */
+               "over the air byte order", therefore little endian again ... */
             le_u64 = byteorder_swapll(*((const uint64_t *)val));
-    
 
-            rail_ret = RAIL_IEEE802154_SetLongAddress(dev->rhandle, (uint8_t*)&le_u64, 0);
-            
+
+            rail_ret = RAIL_IEEE802154_SetLongAddress(dev->rhandle, (uint8_t *)&le_u64, 0);
+
             if (rail_ret != RAIL_STATUS_NO_ERROR) {
-                LOG_ERROR("[rail] error setting long address: msg: %s\n", 
-                            rail_error2str(rail_ret));
+                LOG_ERROR("[rail] error setting long address: msg: %s\n",
+                          rail_error2str(rail_ret));
                 res = -EFAULT;
                 break;
             }
@@ -548,10 +549,10 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             /* RIOT driver blob supports multible PAN IDs. Does RIOT as well? */
 
             rail_ret = RAIL_IEEE802154_SetPanId(dev->rhandle, *((const uint16_t *)val), 0);
-            
+
             if (rail_ret != RAIL_STATUS_NO_ERROR) {
-                LOG_ERROR("[rail] error setting NIB/pan id: msg: %s\n", 
-                            rail_error2str(rail_ret));
+                LOG_ERROR("[rail] error setting NIB/pan id: msg: %s\n",
+                          rail_error2str(rail_ret));
                 res = -EFAULT;
                 break;
             }
@@ -563,13 +564,13 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
 
             /* RAIL driver blob supports deci-dBm, RIOT only dBm*/
             int16_t dBm = *((const int16_t *)val);
-            int16_t ddBm = dBm *10;
-           
+            int16_t ddBm = dBm * 10;
+
             rail_ret = RAIL_SetTxPowerDbm(dev->rhandle, ddBm);
 
             if (rail_ret != RAIL_STATUS_NO_ERROR) {
-                LOG_ERROR("[rail] error setting NIB/pan id: msg: %s\n", 
-                            rail_error2str(rail_ret));
+                LOG_ERROR("[rail] error setting NIB/pan id: msg: %s\n",
+                          rail_error2str(rail_ret));
                 res = -EFAULT;
                 break;
             }
@@ -586,15 +587,15 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
         case (NETOPT_PROMISCUOUSMODE):
 
             /* we have to store this info, because we can not ask the RAIL
-            driver blob, if promiscuousMode is set
-            */
+               driver blob, if promiscuousMode is set
+             */
             dev->promiscuousMode = ((const bool *)val)[0];
 
             rail_ret = RAIL_IEEE802154_SetPromiscuousMode(dev->rhandle, dev->promiscuousMode);
 
             if (rail_ret != RAIL_STATUS_NO_ERROR) {
-                LOG_ERROR("[rail] error setting promiscuous mode: msg: %s\n", 
-                            rail_error2str(rail_ret));
+                LOG_ERROR("[rail] error setting promiscuous mode: msg: %s\n",
+                          rail_error2str(rail_ret));
                 res = -EFAULT;
                 break;
             }
@@ -604,7 +605,7 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             /* deactivate CSMA */
             if (((const bool *)val)[0] == false) {
                 dev->csma_config.csmaTries = 0;
-            } 
+            }
             else {
                 // set it to the default value?
                 dev->csma_config.csmaTries = RAIL_DEFAULT_CSMA_TRIES;
@@ -630,18 +631,18 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             rail_ret = RAIL_SetCcaThreshold(dev->rhandle, *((const int8_t *)val));
 
             if (rail_ret != RAIL_STATUS_NO_ERROR) {
-                LOG_ERROR("[rail] error CCA threshold: msg: %s\n", 
-                            rail_error2str(rail_ret));
+                LOG_ERROR("[rail] error CCA threshold: msg: %s\n",
+                          rail_error2str(rail_ret));
                 res = -EFAULT;
                 break;
             }
-            
+
             res = sizeof(int8_t);
             break;
         default:
             break;
     }
-    
+
     if (res == -ENOTSUP) {
         res = netdev_ieee802154_set((netdev_ieee802154_t *)netdev, opt, val, len);
     }
@@ -655,19 +656,19 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
         - NETOPT_RETRANS
 
         - bool     RAIL_IEEE802154_IsEnabled (void) ?
-        - void 	RAIL_EnableTxHoldOff (RAIL_Handle_t railHandle, bool enable)
-        - bool 	RAIL_IsTxHoldOffEnabled (RAIL_Handle_t railHandle)
+        - void  RAIL_EnableTxHoldOff (RAIL_Handle_t railHandle, bool enable)
+        - bool  RAIL_IsTxHoldOffEnabled (RAIL_Handle_t railHandle)
 
-        - No Option for pan coord? RAIL_Status_t   
+        - No Option for pan coord? RAIL_Status_t
               RAIL_IEEE802154_SetPanCoordinator (bool isPanCoordinator)
         - NETOPT_IPV6_ADDR_REMOVE
             -  Set to 0x00 00 00 00 00 00 00 00 to disable for this index.
 
 
-    */
+     */
 
     DEBUG("rail_netdev->set called opt %s val %p len %d \n", netopt2str(opt), val, len);
-    
+
     return 0;
 }
 
@@ -708,16 +709,16 @@ static int _set_state(rail_t *dev, netopt_state_t state)
     (void) dev;
     switch (state) {
         case NETOPT_STATE_STANDBY:
-            
+
             break;
         case NETOPT_STATE_SLEEP:
-            
+
             break;
         case NETOPT_STATE_IDLE:
-            
+
             break;
         case NETOPT_STATE_TX:
-            
+
             break;
         case NETOPT_STATE_RESET:
             break;

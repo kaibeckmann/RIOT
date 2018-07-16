@@ -38,7 +38,7 @@ void auto_init_rail(void)
     for (unsigned i = 0; i < RAIL_NUM; i++) {
 
         LOG_DEBUG("[auto_init_netif] initializing rail #%u\n", i);
-        
+
         rail_setup(&rail_devs[i], &rail_params[i]);
 
         /* init ieee802154 layer */

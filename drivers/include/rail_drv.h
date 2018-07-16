@@ -47,7 +47,7 @@ extern "C" {
 /** @} */
 
 /* states of the radio transceiver */
-/* TODO 
+/* TODO
     - use enum?
     - use !
 */
