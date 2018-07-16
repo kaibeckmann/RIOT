@@ -30,8 +30,13 @@
 
 #include "log.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #include "debug.h"
+
+#include "rail.h"
+#include "ieee802154/rail_ieee802154.h"
+
+
 
 /* local declaration of driver methodes */
 static int _send(netdev_t *netdev, const iolist_t *iolist);
@@ -50,6 +55,7 @@ static const RAIL_CsmaConfig_t csma_config = RAIL_CSMA_CONFIG_802_15_4_2003_2p4_
 
 /* local helper functions */
 static netopt_state_t _get_state(rail_t *dev);
+static int _set_state(rail_t *dev, netopt_state_t state);
 
 const netdev_driver_t rail_driver = {
     .send = _send,
@@ -59,6 +65,28 @@ const netdev_driver_t rail_driver = {
     .get = _get,
     .set = _set,
 };
+
+
+static inline int rail_map_rail_status2errno(RAIL_Status_t code) {
+    switch (code) {
+        case (RAIL_STATUS_NO_ERROR):
+            return 0;
+            break;
+        case (RAIL_STATUS_INVALID_PARAMETER):
+            return -EINVAL;
+            break;
+        case (RAIL_STATUS_INVALID_STATE):
+            return -EPERM;
+            break;
+        case (RAIL_STATUS_INVALID_CALL):
+            return -EOPNOTSUPP;
+            break;
+        case (RAIL_STATUS_SUSPENDED):
+            break;
+        default:
+            break;
+    }
+}
 
 static int _init(netdev_t *netdev)
 {
@@ -82,8 +110,6 @@ static int _init(netdev_t *netdev)
     dev->netdev.proto = GNRC_NETTYPE_UNDEF;
 #endif
 
-    /* do not start in promiscuousMode */
-    dev->promiscuousMode = false;
 
     netdev->driver = &rail_driver;
 
@@ -314,6 +340,8 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
         - NETOPT_RETRANS 
         - Can CSMA be switched on / off and if yes how?
         - NETOPT_BANDWIDTH could be calculated, but is it usefull?
+        - NETOPT_CHANNEL_FREQUENCY
+        - NETOPT_AUTOCCA
     */
     int ret = -ENOTSUP;
 
@@ -324,6 +352,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             ret = sizeof(uint16_t);
             break;
         case (NETOPT_CHANNEL_PAGE): 
+            /* TODO */
             break;
         case (NETOPT_STATE):
             assert(max_len >= sizeof(netopt_state_t));
@@ -335,10 +364,11 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             /* rail tx dbm has a factor of 10 -> loosing resolution here */
             /* get transmitt power with new RAIL helper function */
             RAIL_TxPower_t power_tx_ddBm = RAIL_GetTxPowerDbm(dev->rhandle);
-            *((uint16_t *)val) = (uint16_t)power_tx_ddBm / 10;
-            ret = sizeof(uint16_t);
+            *((uint16_t *)val) = (int16_t) (power_tx_ddBm / 10);
+            ret = sizeof(int16_t);
             break;
         case (NETOPT_RETRANS): 
+            /* TODO */
             break;
         case (NETOPT_PROMISCUOUSMODE):
             if (dev->promiscuousMode == true) {
@@ -359,6 +389,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             ret = sizeof(netopt_enable_t);
             break;
         case (NETOPT_CSMA): 
+            /* TODO enable / disable ? */
             *((netopt_enable_t *)val) = NETOPT_ENABLE;
             ret = sizeof(netopt_enable_t);
             break;
@@ -393,51 +424,217 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
         return ret;
     }
 
-    DEBUG("ieee802.15.4 could not handle netopt opt %s \n", netopt2str(opt));
+    /*DEBUG("ieee802.15.4 could not handle netopt opt %s \n", netopt2str(opt));*/
 
     return ret;
 }
 
 static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
 {
+    
 
     if (netdev == NULL) {
         return -ENODEV;
     }
 
     rail_t *dev = (rail_t *)netdev;
-    (void)dev;
+    int res = -ENOTSUP;
+    RAIL_Status_t rail_ret;
+    uint16_t le_u16;
+    uint64_t le_u64;
+
+    /* TODO wake up transceiver? necessary? or done automaticaly by RAIL driver
+    blob?
+    */
+
+     switch (opt) {
+
+         case (NETOPT_CHANNEL):
+            /* since we have to provide the channel for each tx or rx, just
+            change the attribute in the netdev struct */
+            assert(len == sizeof(uint16_t));
+            uint8_t chan = (((const uint16_t *)val)[0]) & UINT8_MAX;
+            
+            if (dev->params.freq == RAIL_TRANSCEIVER_FREQUENCY_2P4GHZ) {
+                if (chan < RAIL_2P4GH_MIN_CHANNEL || chan > RAIL_2P4GH_MAX_CHANNEL) {
+                    res = -EINVAL;
+                    break;
+                }
+            } 
+            else if (dev->params.freq == RAIL_TRANSCEIVER_FREQUENCY_868MHZ) {
+                /* 868MHz has only one channel, channel 0! */
+                if (chan != RAIL_868MHZ_DEFAULT_CHANNEL) {
+                    res = -EINVAL;
+                    break;
+                }
+            } 
+            else if (dev->params.freq == RAIL_TRANSCEIVER_FREQUENCY_912MHZ) {
+                if (chan > RAIL_912MHZ_MAX_CHANNEL) {
+                    res = -EINVAL;
+                    break;
+                }
+            } 
+            else {
+                res = -EINVAL;
+                LOG_ERROR("Unknown radio frequency configured\n");
+                assert(false);
+                break;
+            }
+            /* since we have to provide the channel for each tx or rx, just
+            change the attribute in the netdev struct */
+            /* TODO if chan_old != chan_new -> interupt rx op? */
+            /* don't set res to set netdev_ieee802154_t::chan */
+            dev->netdev.chan = chan;
+                
+            break;
+         case (NETOPT_CHANNEL_PAGE):
+            /* TODO?? */
+            break;
+        case (NETOPT_ADDRESS):
+            assert(len <= sizeof(uint16_t));
+            /* RIOT uses Big endian, RAIL driver blog little ... */
+
+            le_u16 = ntohs(*((const uint16_t *)val));
+
+            /* RAIL driver blob can manage upto RAIL_IEEE802154_MAX_ADDRESSES
+               TODO how does RIOT handle multible short addresses?
+               atm just at pos 0
+            */
+            rail_ret = RAIL_IEEE802154_SetShortAddress(dev->rhandle, le_u16, 0);
+            
+            if (rail_ret != RAIL_STATUS_NO_ERROR) {
+                LOG_ERROR("[rail] error setting short address: msg: %s\n", 
+                            rail_error2str(rail_ret));
+                res = -EFAULT;
+                break;
+            }
+            
+            /* don't set res to set netdev_ieee802154_t::short_addr */
+            break;
+        case (NETOPT_ADDRESS_LONG):
+            assert(len <= sizeof(uint64_t));
+            /* RAIL driver blob can manage upto RAIL_IEEE802154_MAX_ADDRESSES
+               TODO how does RIOT handle multible long addresses?
+               atm just at pos 0
+            */
+            /* now the long addr ... the RAIL API docu says it have to be in
+            "over the air byte order", therefore little endian again ... */
+            le_u64 = byteorder_swapll(*((const uint64_t *)val));
+    
+
+            rail_ret = RAIL_IEEE802154_SetLongAddress(dev->rhandle, (uint8_t*)&le_u64, 0);
+            
+            if (rail_ret != RAIL_STATUS_NO_ERROR) {
+                LOG_ERROR("[rail] error setting long address: msg: %s\n", 
+                            rail_error2str(rail_ret));
+                res = -EFAULT;
+                break;
+            }
+            /* don't set res to set netdev_ieee802154_t::long_addr */
+            break;
+        case (NETOPT_NID):
+            assert(len <= sizeof(uint16_t));
+            /* RIOT driver blob supports multible PAN IDs. Does RIOT as well? */
+
+            rail_ret = RAIL_IEEE802154_SetPanId(dev->rhandle, *((const uint16_t *)val), 0);
+            
+            if (rail_ret != RAIL_STATUS_NO_ERROR) {
+                LOG_ERROR("[rail] error setting NIB/pan id: msg: %s\n", 
+                            rail_error2str(rail_ret));
+                res = -EFAULT;
+                break;
+            }
+
+            /* don't set res to set netdev_ieee802154_t::pan */
+            break;
+        case (NETOPT_TX_POWER):
+            assert(len <= sizeof(int16_t));
+
+            /* RAIL driver blob supports deci-dBm, RIOT only dBm*/
+            int16_t dBm = *((const int16_t *)val);
+            int16_t ddBm = dBm *10;
+           
+            rail_ret = RAIL_SetTxPowerDbm(dev->rhandle, ddBm);
+
+            if (rail_ret != RAIL_STATUS_NO_ERROR) {
+                LOG_ERROR("[rail] error setting NIB/pan id: msg: %s\n", 
+                            rail_error2str(rail_ret));
+                res = -EFAULT;
+                break;
+            }
+            res = sizeof(uint16_t);
+            break;
+        case (NETOPT_STATE):
+            assert(len <= sizeof(netopt_state_t));
+            res = _set_state(dev, *((const netopt_state_t *)val));
+            break;
+        case (NETOPT_AUTOACK):
+            break;
+        case (NETOPT_RETRANS):
+            break;
+        case (NETOPT_PROMISCUOUSMODE):
+
+            /* we have to store this info, because we can not ask the RAIL
+            driver blob, if promiscuousMode is set
+            */
+            dev->promiscuousMode = ((const bool *)val)[0];
+
+            rail_ret = RAIL_IEEE802154_SetPromiscuousMode(dev->rhandle, dev->promiscuousMode);
+
+            if (rail_ret != RAIL_STATUS_NO_ERROR) {
+                LOG_ERROR("[rail] error setting promiscuous mode: msg: %s\n", 
+                            rail_error2str(rail_ret));
+                res = -EFAULT;
+                break;
+            }
+            res = sizeof(netopt_enable_t);
+            break;
+        case (NETOPT_CSMA):
+            break;
+        case (NETOPT_CSMA_RETRIES):
+            break;
+        case (NETOPT_CCA_THRESHOLD):
+            assert(len <= sizeof(int8_t));
+
+            rail_ret = RAIL_SetCcaThreshold(dev->rhandle, *((const int8_t *)val));
+
+            if (rail_ret != RAIL_STATUS_NO_ERROR) {
+                LOG_ERROR("[rail] error CCA threshold: msg: %s\n", 
+                            rail_error2str(rail_ret));
+                res = -EFAULT;
+                break;
+            }
+            
+            res = sizeof(int8_t);
+            break;
+        default:
+            break;
+    }
+    
+    if (res == -ENOTSUP) {
+        res = netdev_ieee802154_set((netdev_ieee802154_t *)netdev, opt, val, len);
+    }
+
+    return res;
 
     /* TODO
-        - NETOPT_CHANNEL
-            - bei channel, testen ob channel zur frequenz passt
+
         - NETOPT_CHANNEL_PAGE // how? what is it? relevant?
-        - NETOPT_ADDRESS
-            - bool     RAIL_IEEE802154_SetShortAddress (uint16_t shortAddr)
-        - NETOPT_ADDRESS_LONG
-            - bool     RAIL_IEEE802154_SetLongAddress (uint8_t *longAddr)
-        - NETOPT_NID
-            - bool     RAIL_IEEE802154_SetPanId (uint16_t panId)
-        - NETOPT_TX_POWER
-            - what unit? Dbm? -> helper function 
-            - RAIL_Status_t RAIL_SetTxPowerDbm(RAIL_Handle_t railHandle,
-              RAIL_TxPower_t power)
-        - NETOPT_STATE 
         - NETOPT_AUTOACK
         - NETOPT_RETRANS
-        - NETOPT_PROMISCUOUSMODE
-            - RAIL_Status_t    RAIL_IEEE802154_SetPromiscuousMode (bool enable)
-            - set once? or for every receive?
         - NETOPT_CSMA
         - NETOPT_CSMA_RETRIES
-        - NETOPT_CCA_THRESHOLD
-            - RAIL_Status_t RAIL_SetCcaThreshold(RAIL_Handle_t railHandle,
-              int8_t ccaThresholdDbm) 
+
 
         - bool     RAIL_IEEE802154_IsEnabled (void) ?
+        - void 	RAIL_EnableTxHoldOff (RAIL_Handle_t railHandle, bool enable)
+        - bool 	RAIL_IsTxHoldOffEnabled (RAIL_Handle_t railHandle)
 
         - No Option for pan coord? RAIL_Status_t   
               RAIL_IEEE802154_SetPanCoordinator (bool isPanCoordinator)
+        - NETOPT_IPV6_ADDR_REMOVE
+            -  Set to 0x00 00 00 00 00 00 00 00 to disable for this index.
+
 
     */
 
@@ -476,4 +673,29 @@ netopt_state_t _get_state(rail_t *dev)
     }
 
     return NETOPT_STATE_IDLE;
+}
+
+static int _set_state(rail_t *dev, netopt_state_t state)
+{
+    (void) dev;
+    switch (state) {
+        case NETOPT_STATE_STANDBY:
+            
+            break;
+        case NETOPT_STATE_SLEEP:
+            
+            break;
+        case NETOPT_STATE_IDLE:
+            
+            break;
+        case NETOPT_STATE_TX:
+            
+            break;
+        case NETOPT_STATE_RESET:
+            break;
+        default:
+            return -ENOTSUP;
+    }
+    return -ENOTSUP;
+    /*return sizeof(netopt_state_t);*/
 }

@@ -172,6 +172,9 @@ void rail_setup(rail_t *dev, const rail_params_t *params)
 
     DEBUG("rail->setup called\n");
 
+    /* default, no promiscuous  mode */
+    dev->promiscuousMode = false;
+
     dev->state = RAIL_TRANSCEIVER_STATE_UNINITIALIZED;
     dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
 
@@ -415,11 +418,11 @@ int rail_init(rail_t *dev)
     /* set short addr */
     DEBUG("Set ShortAddr 0x%04x\n", ntohs(dev->eui.uint16[3].u16));
 
-    /* yeah riot what it in big endian*/
+    /* yeah riot want it in big endian*/
     memcpy(netdev->short_addr, &dev->eui.uint16[3].u16, 2);
 
-    /* rail what it in big endian as well, but the hw stores it in little ...*/
-    bRet = RAIL_IEEE802154_SetShortAddress(dev->rhandle, dev->eui.uint16[3].u16, 0);
+    /* rail want it in little endian ...*/
+    bRet = RAIL_IEEE802154_SetShortAddress(dev->rhandle, byteorder_ntohs(dev->eui.uint16[3]), 0);
     if (bRet != true) {
         DEBUG("Can not set short addr\n");
     }
@@ -429,7 +432,7 @@ int rail_init(rail_t *dev)
 
     memcpy(netdev->long_addr, &dev->eui.uint8, IEEE802154_LONG_ADDRESS_LEN);
 
-    /* but for the long address, it have to be little endian aka reversed order */
+    /* and for the long address, it have to be little endian aka reversed order */
     uint64_t addr_rev = byteorder_ntohll(dev->eui.uint64);
 
     bRet = RAIL_IEEE802154_SetLongAddress(dev->rhandle, (uint8_t *)&addr_rev, 0);
