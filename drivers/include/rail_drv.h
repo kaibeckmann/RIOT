@@ -27,6 +27,25 @@ extern "C" {
 #endif
 
 
+/**
+ * @name    Channel configuration
+ * @{
+ */
+#define RAIL_868MHZ_MIN_CHANNEL           (IEEE802154_CHANNEL_MIN_SUBGHZ)
+#define RAIL_868MHZ_MAX_CHANNEL           (IEEE802154_CHANNEL_MIN_SUBGHZ) /* 868MHz has only ONE channel! */
+#define RAIL_868MHZ_DEFAULT_CHANNEL       (IEEE802154_CHANNEL_MIN_SUBGHZ)
+#define RAIL_912MHZ_MIN_CHANNEL           (IEEE802154_CHANNEL_MIN_SUBGHZ)
+#define RAIL_912MHZ_MAX_CHANNEL           (IEEE802154_CHANNEL_MAX_SUBGHZ)
+#define RAIL_912MHZ_DEFAULT_CHANNEL       (IEEE802154_DEFAULT_SUBGHZ_CHANNEL)
+/* Page 2 is O-QPSK 100 kbit/s (channel 0), or 250 kbit/s (channels 1-10) */
+#define RAIL_SUBGHZ_DEFAULT_PAGE          (IEEE802154_DEFAULT_SUBGHZ_PAGE)
+#define RAIL_2P4GH_MIN_CHANNEL           (IEEE802154_CHANNEL_MIN)
+#define RAIL_2P4GH_MAX_CHANNEL           (IEEE802154_CHANNEL_MAX)
+#define RAIL_2P4GH_DEFAULT_CHANNEL       (IEEE802154_DEFAULT_CHANNEL)
+/* Only page 0 is supported in the 2.4 GHz band */
+
+/** @} */
+
 /* states of the radio transceiver */
 /* TODO 
     - use enum?
