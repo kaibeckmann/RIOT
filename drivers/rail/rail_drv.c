@@ -103,13 +103,13 @@ static const RAIL_IEEE802154_Config_t _rail_ieee802154_config = {
     .addresses = NULL,
     .ackConfig = {
         .enable = true,                     /* Turn on auto ACK for IEEE 802.15.4 */
-        .ackTimeout = 1200,                 /* why 1200? -> docu says 54 symbols * 16 us/symbol = 864 us */
+        .ackTimeout = 1200,                 /* (from mbed driver) why 1200? -> docu says 54 symbols * 16 us/symbol = 864 us */
         .rxTransitions = {
-            .success = RAIL_RF_STATE_RX,    /* TODO docu says RAIL_RF_STATE_TX? why RX? */
+            .success = RAIL_RF_STATE_RX,    /* after rx -> state rx */
             .error = RAIL_RF_STATE_RX       /* ignored */
         },
         .txTransitions = {
-            .success = RAIL_RF_STATE_RX,
+            .success = RAIL_RF_STATE_RX,    /* after tx -> state rx */
             .error = RAIL_RF_STATE_RX       /* ignored */
         }
     },
@@ -492,6 +492,14 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
     /* set frame length to first byte (I wonder where this is actually documented?) */
     data_ptr[0] = (uint8_t)data_length + 1;
 
+    /* force radio state to idle, aboard running ops, so we can transmitt
+       otherwise the transceiver might be receiving/transmitting and the new 
+       transmit op fails.
+       TODO ensure there are no other running ops
+    */
+    RAIL_Idle(dev->rhandle, RAIL_IDLE_ABORT, true);
+
+
     /* write packet payload in the buffer of the rail driver blob*/
     RAIL_WriteTxFifo(dev->rhandle, data_ptr, data_length + 1, true);
 
@@ -519,7 +527,9 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
                                             NULL);
 
     if (ret != RAIL_STATUS_NO_ERROR) {
-        LOG_ERROR("Can't start transmit - error msg: %s \n", rail_error2str(ret));
+        LOG_ERROR("Can't start transmit - state %s -  error msg: %s \n", 
+                rail_radioState2str(RAIL_GetRadioState(dev->rhandle)),
+                rail_error2str(ret));
         return -1;
     }
     DEBUG("Started transmit\n");
@@ -681,7 +691,8 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
 
     /* Occurs when the transmit buffer underflows. */
     if (event & RAIL_EVENT_TX_UNDERFLOW) {
-        DEBUG("Rail event Tx underflow - > should not happen\n");
+        LOG_INFO("Rail event Tx underflow - > should not happen: race condition" 
+                " while transmitting new package\n");
         /* should not happen as long as the packet is written as whole into the
            RAIL driver blob buffer*/
     }
