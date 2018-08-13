@@ -181,6 +181,9 @@ void rail_setup(rail_t *dev, const rail_params_t *params)
     /* TODO config for 868/912MHz different? */
     dev->csma_config = _rail_csma_default_config;
 
+    //dev->lastEvent = RAIL_EVENTS_NONE;
+    
+
 }
 
 /* init Packet Trace (PTI) functionality -> usefull for debugging */
@@ -259,7 +262,13 @@ int _rail_PA_init(rail_t *dev)
 
     return 0;
 }
-
+int bit_pos (uint64_t a)
+{
+    const uint64_t magic_multiplier = 
+         (( 7ULL << 56) | (15ULL << 48) | (23ULL << 40) | (31ULL << 32) |
+          (39ULL << 24) | (47ULL << 16) | (55ULL <<  8) | (63ULL <<  0));
+    return (int)(((a >> 7) * magic_multiplier) >> 56);
+}
 int rail_init(rail_t *dev)
 {
 
@@ -510,11 +519,12 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
     dev->state = RAIL_TRANSCEIVER_STATE_TX;
 
     /* check if ack req is requested */
-    if (dev->netdev.flags & NETDEV_IEEE802154_ACK_REQ) {
-        tx_option |= RAIL_TX_OPTION_WAIT_FOR_ACK;
-        DEBUG("tx option auto ack\n");
+    
+//    if (dev->netdev.flags & NETDEV_IEEE802154_ACK_REQ) {
+//        tx_option |= RAIL_TX_OPTION_WAIT_FOR_ACK;
+//        DEBUG("tx option auto ack\n");
         /* TODO wait for ack, necessary or done by layer above? */
-    }
+//    }
 
     DEBUG("[rail] transmit - radio state: %s\n", rail_radioState2str(RAIL_GetRadioState(dev->rhandle)));
 
@@ -534,11 +544,14 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
     }
     DEBUG("Started transmit\n");
 
+    dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_STARTED);
+
     /* TODO
        - if this should be asymmetric blocking call, we have to wait for the
          tx done event by the callback
         - or use while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX );
      */
+  //  while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX );
     return 0;
 }
 
@@ -571,42 +584,84 @@ int rail_start_rx(rail_t *dev)
     return 0;
 }
 
-/* RAIL blob event handler, this is not a ISR handler! */
-/* TODO what parts can be moved to the netdev->_isr function?
+/* c&p https://stackoverflow.com/a/32339674 */
+/*
+static int _bit_pos (uint64_t a)
+{
+    const uint64_t magic_multiplier = 
+         (( 7ULL << 56) | (15ULL << 48) | (23ULL << 40) | (31ULL << 32) |
+          (39ULL << 24) | (47ULL << 16) | (55ULL <<  8) | (63ULL <<  0));
+    return (int)(((a >> 7) * magic_multiplier) >> 56);
+}
+*/
+/* RAIL blob event handler */
+/* moved everything possible to netdev->isr()
  */
 static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event)
 {
 
     /* TODO get the right netdev struct */
     rail_t *dev = _rail_dev;
+    msg_t msg;
+
+
+    /* if it not 0, than the netdev->isr() is busy processing the last event.
+       This is not good.
+    */
+    //assert(dev->lastEvent == RAIL_EVENTS_NONE);
 
     /* rail events are a bitmask, therefore multible events within this call
        possible
      */
+    LOG_INFO("[rail-handler] Rail event: %llu\n", event);
 
-    /* event description c&p from RAIL API docu */
+    /* this might be necessary to be handled here 
+        ignore other possible events and don't forward to netdev->isr()
+    
+       TODO move to netdev->isr() and test 
+    */
+    /* Indicates a Data Request is being received when using IEEE 802.15.4
+       functionality. */
+    if (event & RAIL_EVENT_IEEE802154_DATA_REQUEST_COMMAND) {
+        /* TODO what is source match? and why might it be necessary to filter
+           here the packet?
+         */
+        DEBUG("Rail event ieee 802.15.4 data request command\n");
+        RAIL_IEEE802154_SetFramePending(rhandle);
 
-    /* Notifies the application when searching for an ack packet has timed out */
-    if (event & RAIL_EVENT_RX_ACK_TIMEOUT) {
-        DEBUG("Rail event RX ACK TIMEOUT\n");
-        /* ack timeout for tx acks? TODO confirm */
-        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_NOACK);
+        return;
     }
 
-    /* Occurs when a packet being received has a frame error */
-    if (event & RAIL_EVENT_RX_FRAME_ERROR) {
-        DEBUG("Rail event RX frame error\n");
-        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_CRC_ERROR);
+    /* Occurs when the application needs to run a calibration.*/
+    if (event & RAIL_EVENT_CAL_NEEDED) {
 
-        /* TODO statistic? */
+        DEBUG("Rail event calibration needed \n");
+        LOG_INFO("Rail radio transceiver needs a calibration: executed\n");
+
+        RAIL_Status_t ret;
+
+        ret = RAIL_Calibrate(rhandle, NULL, RAIL_CAL_ALL_PENDING);
+
+        DEBUG("calibration done, ret: %d \n", ret);
+
+        assert(ret == RAIL_STATUS_NO_ERROR);
+
+        //dev->lastEvent = RAIL_EVENTS_NONE;
+
+        return;
     }
+   
+    /* store the event in the netdev structure, so the netdev->isr() can access
+       it. This can cause race conditions.
 
-    /* Occurs when a packet's address does not match the filtering settings */
-    if (event & RAIL_EVENT_RX_ADDRESS_FILTERED) {
-        DEBUG("Rail event rx address filtered\n");
-    }
+       TODO mutex, pause transceiver ? how to solve race condition problem?
+    */
+    //dev->lastEvent = event;
 
-    /*	Occurs whenever a packet is received */
+    /*	Occurs whenever a packet is received
+        Can not moved to netdev->isr(), because packet is only accessable in
+        this handler
+    */
     if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
         DEBUG("Rail event rx packet received\n");
 
@@ -626,104 +681,37 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
             DEBUG("Got an packet with an error - packet status msg: %s \n",
                   rail_packetStatus2str(rx_packet_info.packetStatus));
 
-            dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_CRC_ERROR);
+            /* "simulate" a normal RAIL event, so it can be handled in
+                netdev->isr() */
+            //dev->lastEvent = RAIL_EVENT_RX_FRAME_ERROR;
+            
+            /* the event is a bitfield and an uint64_t, the type of msg is
+               only uint16_t, so we map set flag to number
+            */
+            msg.type = __builtin_ffsll(RAIL_EVENT_RX_FRAME_ERROR);
+            mbox_put(&dev->events_mbox, &msg);
+            /* if the packet is broken, we can release the memory */
             RAIL_ReleaseRxPacket(rhandle, rx_handle);
         }
         else {
             DEBUG("Rail event rx packet good packet \n");
+            
             /* hold packet so it can be received from netdev thread context */
             RAIL_HoldRxPacket(rhandle);
-
-            /* delegate to the _isr, even if there is nothing to do ...*/
-            dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_ISR);
+            /* save the event type and the handle, the handle is a pointer */
+            msg.type = __builtin_ffsll(RAIL_EVENT_RX_PACKET_RECEIVED);
+            msg.content.ptr = (void*) rx_handle;
+            mbox_put(&dev->events_mbox, &msg);
         }
     }
 
-    /* TODO RAIL_EVENT_RX_PACKET_ABORTED */
-    /* Occurs when a packet is aborted, but a more specific reason (such as
-       RAIL_EVENT_RX_ADDRESS_FILTERED) isn't known.
-     */
+    /* create a msg, inform the isr */
+    /* TODO there cloud be multible events in one RAIL_Events_t, loop? */
+    msg.type = __builtin_ffsll(event);
 
-    /* Occurs when a packet was sent */
-    if (event & RAIL_EVENT_TX_PACKET_SENT) {
-        DEBUG("Rail event Tx packet sent \n");
-
-        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_COMPLETE);
-
-        /* TODO set state? */
-    }
-
-
-    /* TODO RAIL_EVENT_TXACK_PACKET_SENT */
-    /* Occurs when an ack packet was sent. */
-
-    if (event & RAIL_EVENT_TX_CHANNEL_BUSY) {
-        DEBUG("Rail event Tx channel busy\n");
-        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_MEDIUM_BUSY);
-
-        /* TODO set state? */
-    }
-
-    /* Occurs when a transmit is aborted by the user */
-    if (event & RAIL_EVENT_TX_ABORTED) {
-        DEBUG("Rail event Tx aborted\n");
-
-        /* TODO set state? */
-    }
-
-    /* TODO RAIL_EVENT_TXACK_ABORTED */
-    /* Occurs when a transmit is aborted by the user */
-
-    /*  Occurs when a transmit is blocked from occurring due to having called
-        RAIL_EnableTxHoldOff().
-     */
-    if (event & RAIL_EVENT_TX_BLOCKED) {
-        DEBUG("Rail event Tx blocked\n");
-
-        /* TODO how to notify layer above? */
-        /* TODO set state? */
-    }
-
-    /* TODO RAIL_EVENT_TXACK_BLOCKED */
-    /*  Occurs when an ack transmit is blocked from occurring due to having
-        called RAIL_EnableTxHoldOff().
-     */
-
-    /* Occurs when the transmit buffer underflows. */
-    if (event & RAIL_EVENT_TX_UNDERFLOW) {
-        LOG_INFO("Rail event Tx underflow - > should not happen: race condition" 
-                " while transmitting new package\n");
-        /* should not happen as long as the packet is written as whole into the
-           RAIL driver blob buffer*/
-    }
-
-    /* RAIL_EVENT_TXACK_UNDERFLOW */
-    /* Occurs when the ack transmit buffer underflows.*/
-
-    /* Indicates a Data Request is being received when using IEEE 802.15.4
-       functionality. */
-    if (event & RAIL_EVENT_IEEE802154_DATA_REQUEST_COMMAND) {
-        /* TODO what is source match? and why might it be necessary to filter
-           here the packet?
-         */
-        DEBUG("Rail event ieee 802.15.4 data request command\n");
-        RAIL_IEEE802154_SetFramePending(rhandle);
-    }
-
-    /* Occurs when the application needs to run a calibration.*/
-    if (event & RAIL_EVENT_CAL_NEEDED) {
-
-        DEBUG("Rail event calibration needed \n");
-        LOG_INFO("Rail radio transceiver needs a calibration: executed\n");
-
-        RAIL_Status_t ret;
-
-        ret = RAIL_Calibrate(rhandle, NULL, RAIL_CAL_ALL_PENDING);
-
-        DEBUG("calibration done, ret: %d \n", ret);
-
-        assert(ret == RAIL_STATUS_NO_ERROR);
-    }
+    /* let the netdev->isr() handle the rest */
+    dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_ISR);
+    
 }
 
 #ifdef DEVELHELP

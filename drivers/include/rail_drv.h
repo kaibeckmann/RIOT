@@ -20,6 +20,8 @@
 #include "net/gnrc/nettype.h"
 #include "net/eui64.h"
 
+#include "mbox.h"
+
 #include "rail.h"
 
 #ifdef __cplusplus
@@ -58,6 +60,7 @@ extern "C" {
 #define RAIL_TRANSCEIVER_STATE_RX               0x04
 #define RAIL_TRANSCEIVER_STATE_TX               0x05
 
+#define RAIL_EVENT_MBOX_SIZE  10
 
 #define RAIL_DEFAULT_PANID         (IEEE802154_DEFAULT_PANID)
 #define RAIL_DEFAULT_TXPOWER       (IEEE802154_DEFAULT_TXPOWER)
@@ -85,10 +88,15 @@ typedef struct {
     RAIL_Config_t rconfig;
     /* config for CSMA */
     RAIL_CsmaConfig_t csma_config;
+    /* intermediate buffer for last RAIL event, so it can be accessed in the
+    _isr function */
+    //RAIL_Events_t lastEvent;
 
     uint8_t state;              /* state of radio transceiver */
 
     RAIL_RxPacketHandle_t lastRxPacketHandle;
+
+    mbox_t events_mbox;
 
     bool promiscuousMode;
     eui64_t eui;
