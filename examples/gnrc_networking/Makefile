@@ -39,6 +39,9 @@ USEMODULE += netstats_rpl
 # which is not needed in a production environment but helps in the
 # development process:
 DEVELHELP ?= 1
+#CFLAGS_DBG = -gdwarf-2 -g3
+
+CFLAGS += -DDEBUG_ASSERT_VERBOSE
 
 # Uncomment the following 2 lines to specify static link lokal IPv6 address
 # this might be useful for testing, in cases where you cannot or do not want to
@@ -46,12 +49,13 @@ DEVELHELP ?= 1
 #IPV6_STATIC_LLADDR ?= '"fe80::cafe:cafe:cafe:1"'
 #CFLAGS += -DGNRC_IPV6_STATIC_LLADDR=$(IPV6_STATIC_LLADDR)
 
+
 # Uncomment this to join RPL DODAGs even if DIOs do not contain
 # DODAG Configuration Options (see the doc for more info)
 # CFLAGS += -DGNRC_RPL_DODAG_CONF_OPTIONAL_ON_JOIN
 
 # Change this to 0 show compiler invocation lines by default:
-QUIET ?= 1
+QUIET ?= 0
 
 include $(RIOTBASE)/Makefile.include
 
