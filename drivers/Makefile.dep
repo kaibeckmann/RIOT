@@ -60,6 +60,7 @@ ifneq (,$(filter rail,$(USEMODULE)))
   USEMODULE += netdev_ieee802154
   USEMODULE += gecko_sdk_librail
   USEMODULE += netopt
+  USEMODULE += core_mbox
 endif
 
 ifneq (,$(filter bh1750fvi,$(USEMODULE)))

@@ -21,6 +21,8 @@
 #include "ps.h"
 #include "xtimer.h"
 
+#include "mbox.h"
+
 #include "errno.h"
 
 #include "radio.h"
@@ -49,6 +51,9 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len);
 /* buffer for outgoing frame */
 static uint8_t frame[IEEE802154_FRAME_LEN_MAX + 1];
 
+/* message buffer for events */
+
+static msg_t _msgs_mbox[10];
 
 /* local helper functions */
 static netopt_state_t _get_state(rail_t *dev);
@@ -110,6 +115,9 @@ static int _init(netdev_t *netdev)
 
 
     netdev->driver = &rail_driver;
+
+    /* init the mbox for RAIL events */
+    mbox_init(&dev->events_mbox, _msgs_mbox, RAIL_EVENT_MBOX_SIZE);
 
     int ret;
 
@@ -211,16 +219,17 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 
     /* if this is the first call for a new packet, the handle is (have to be)
        invalid */
-    if (dev->lastRxPacketHandle == RAIL_RX_PACKET_HANDLE_INVALID) {
+//    if (dev->lastRxPacketHandle == RAIL_RX_PACKET_HANDLE_INVALID) {
         /* get the oldest not yet processed packet */
-        pack_handle = RAIL_RX_PACKET_HANDLE_OLDEST;
-    }
-    else {
+        //pack_handle = RAIL_RX_PACKET_HANDLE_OLDEST;
+//        pack_handle = dev->lastRxPacketHandle;
+//    }
+//    else {
         /* otherwise this is the second, third ... call
            we use the saved handle form the call before */
-
+    assert(dev->lastRxPacketHandle != RAIL_RX_PACKET_HANDLE_INVALID);
         pack_handle = dev->lastRxPacketHandle;
-    }
+//    }
 
     /* first packet info -> payload length and the handle of the packet
        if pack_handle is RAIL_RX_PACKET_HANDLE_OLDEST, we get the oldest not
@@ -229,7 +238,7 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
     pack_handle = RAIL_GetRxPacketInfo(dev->rhandle,
                                        pack_handle,
                                        &pack_info);
-    dev->lastRxPacketHandle = pack_handle;
+    //dev->lastRxPacketHandle = pack_handle;
 
     /* buf == NULL && len == 0 -> return packet size, no dropping */
     if (buf == NULL && len == 0) {
@@ -324,11 +333,147 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 
 static void _isr(netdev_t *netdev)
 {
+
+    rail_t *dev = (rail_t *) netdev;
+
+    //RAIL_Events_t event = dev->lastEvent;
+
+    /* let's reset it early */
+    //dev->lastEvent = RAIL_EVENTS_NONE;
+    /* TODO what happens, if another NETDEV_EVENT_ISR is send, while this 
+       function is still processed?
+    */ 
+
+   /* get event from mbox, there have to be one */
+
+    msg_t msg;
+    int ret;
+
+    ret = mbox_try_get(&dev->events_mbox, &msg);
+
+    assert (ret != 0);
+
+    /* let's rebuild the original event (should be changed, use the index
+       directly )
+    */
+    RAIL_Events_t event = 1ULL << (msg.type-1);
+
+    LOG_INFO("[rail-netdev-isr] Rail event: %llu\n", event);
+
     DEBUG("rail_netdev->isr called\n");
-    /* there is not much we can do here, because what is normally is done here,
-       is allready done by the driver blob and the _rail_radio_event_handler.
+
+    /* this shouldn't happen, if it does there is a race condition */
+    //assert(event != RAIL_EVENTS_NONE);
+    /* in case someone deactivates asserts, it's an error */
+    if (event == RAIL_EVENTS_NONE) {
+        LOG_ERROR("[rail] netdev-isr called, but no event occurred -> "
+                "race condition, please file a bug report\n");
+        return;
+    }
+
+    /* event description c&p from RAIL API docu */
+
+    /* rail events are a bitmask, therefore multible events within this call
+       possible
      */
-    netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
+
+
+    /* the basic packet handling was done in the RAIL handler function.
+       Now only the upper layer have to be informed
+    */
+    if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
+
+        assert(dev->lastRxPacketHandle == RAIL_RX_PACKET_HANDLE_INVALID);
+        /* get the handle for the packet from the msg */
+        dev->lastRxPacketHandle = msg.content.ptr;
+        
+        netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
+        return ;
+    }
+
+    /* Notifies the application when searching for an ack packet has timed out */
+    if (event & RAIL_EVENT_RX_ACK_TIMEOUT) {
+        DEBUG("Rail event RX ACK TIMEOUT\n");
+        /* ack timeout for tx acks? TODO confirm */
+        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_NOACK);
+    }
+
+    /* Occurs when a packet being received has a frame error */
+    if (event & RAIL_EVENT_RX_FRAME_ERROR) {
+        DEBUG("Rail event RX frame error\n");
+        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_CRC_ERROR);
+
+        /* TODO statistic? */
+    }
+
+    /* Occurs when a packet's address does not match the filtering settings */
+    if (event & RAIL_EVENT_RX_ADDRESS_FILTERED) {
+        DEBUG("Rail event rx address filtered\n");
+    }
+
+    /* TODO RAIL_EVENT_RX_PACKET_ABORTED */
+    /* Occurs when a packet is aborted, but a more specific reason (such as
+       RAIL_EVENT_RX_ADDRESS_FILTERED) isn't known.
+     */
+
+    /* Occurs when a packet was sent */
+    if (event & RAIL_EVENT_TX_PACKET_SENT) {
+        DEBUG("Rail event Tx packet sent \n");
+
+        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_COMPLETE);
+        return;
+        /* TODO set state? */
+    }
+
+
+    /* TODO RAIL_EVENT_TXACK_PACKET_SENT */
+    /* Occurs when an ack packet was sent. */
+
+    if (event & RAIL_EVENT_TX_CHANNEL_BUSY) {
+        DEBUG("Rail event Tx channel busy\n");
+        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_MEDIUM_BUSY);
+
+        /* TODO set state? */
+    }
+
+    /* Occurs when a transmit is aborted by the user */
+    if (event & RAIL_EVENT_TX_ABORTED) {
+        DEBUG("Rail event Tx aborted\n");
+
+        /* TODO set state? */
+    }
+
+    /* TODO RAIL_EVENT_TXACK_ABORTED */
+    /* Occurs when a transmit is aborted by the user */
+
+    /*  Occurs when a transmit is blocked from occurring due to having called
+        RAIL_EnableTxHoldOff().
+     */
+    if (event & RAIL_EVENT_TX_BLOCKED) {
+        DEBUG("Rail event Tx blocked\n");
+
+        /* TODO how to notify layer above? */
+        /* TODO set state? */
+    }
+
+    /* TODO RAIL_EVENT_TXACK_BLOCKED */
+    /*  Occurs when an ack transmit is blocked from occurring due to having
+        called RAIL_EnableTxHoldOff().
+     */
+
+    /* Occurs when the transmit buffer underflows. */
+    if (event & RAIL_EVENT_TX_UNDERFLOW) {
+        LOG_INFO("Rail event Tx underflow - > should not happen: race condition" 
+                " while transmitting new package\n");
+        /* should not happen as long as the packet is written as whole into the
+           RAIL driver blob buffer*/
+    }
+
+    /* RAIL_EVENT_TXACK_UNDERFLOW */
+    
+    /* Occurs when the ack transmit buffer underflows.*/
+
+
 }
 static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 {
