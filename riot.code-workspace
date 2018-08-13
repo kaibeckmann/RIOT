@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"radio.h": "c"
+		},
+		"uncrustify.configPath": "uncrustify-riot.cfg"
+	}
+	
+}
