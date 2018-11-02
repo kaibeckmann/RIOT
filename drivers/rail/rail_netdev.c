@@ -8,8 +8,6 @@
 
 #include <string.h>
 
-#include "pa.h"
-#include "pti.h"
 #include "rail.h"
 #include "em_core.h"
 
