@@ -53,7 +53,7 @@ extern "C" {
 /* TODO
     - use enum?
     - use !
-*/
+ */
 #define RAIL_TRANSCEIVER_STATE_UNINITIALIZED    0x00
 #define RAIL_TRANSCEIVER_STATE_IDLE             0x01
 #define RAIL_TRANSCEIVER_STATE_SLEEP            0x02
@@ -82,7 +82,7 @@ typedef struct rail_params {
 } rail_params_t;
 
 typedef struct {
-    
+
     RAIL_Events_t event;
     RAIL_RxPacketHandle_t rx_packet;
     RAIL_RxPacketInfo_t rx_packet_info;
@@ -103,13 +103,13 @@ typedef struct {
     /* config for CSMA */
     RAIL_CsmaConfig_t csma_config;
     /* intermediate buffer for last RAIL event, so it can be accessed in the
-    _isr function */
+       _isr function */
 
     uint8_t state;              /* state of radio transceiver */
 
-    ringbuffer_t events_buffer;     /* ring buffer for incomming events */
+    ringbuffer_t events_buffer; /* ring buffer for incomming events */
 
-    uint32_t event_count;           /* stat / debug info, how many rail events have occured */
+    uint32_t event_count;       /* stat / debug info, how many rail events have occured */
 
     bool promiscuousMode;
     eui64_t eui;

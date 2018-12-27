@@ -182,7 +182,7 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 
     rail_t *dev = (rail_t *)netdev;
 
-    
+
     RAIL_Status_t ret;
 
     /*
@@ -221,8 +221,8 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
         assert(event_msg.event == RAIL_EVENT_RX_PACKET_RECEIVED);
         assert(event_msg.rx_packet != RAIL_RX_PACKET_HANDLE_INVALID);
 
-        DEBUG("_recv: no dropping return packet size: 0x%02x\n", 
-                event_msg.rx_packet_info.packetBytes);
+        DEBUG("_recv: no dropping return packet size: 0x%02x\n",
+              event_msg.rx_packet_info.packetBytes);
 
         /* -1 because only payload length, without the packet length byte */
         return event_msg.rx_packet_info.packetBytes - 1;
@@ -236,13 +236,13 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
         assert(event_msg.rx_packet != RAIL_RX_PACKET_HANDLE_INVALID);
 
         /* and drop it */
-        DEBUG("_recv: drop packet - return packet size: 0x%02x\n", 
-                event_msg.rx_packet_info.packetBytes);
+        DEBUG("_recv: drop packet - return packet size: 0x%02x\n",
+              event_msg.rx_packet_info.packetBytes);
 
         RAIL_ReleaseRxPacket(dev->rhandle, event_msg.rx_packet);
 
         /* -1 because only payload length, without the packet length byte */
-        return event_msg.rx_packet_info.packetBytes -1;
+        return event_msg.rx_packet_info.packetBytes - 1;
     }
 
     /* hurray, we are finally at the stage to move the payload to the upper
@@ -252,9 +252,8 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
     /* get the event from the queue */
     rail_event_msg_t event_msg = rail_events_get_last_event(dev);
 
-    
 
-    
+
     /* get more infos about the packet */
     RAIL_RxPacketDetails_t pack_details;
     /* clear info struct */
@@ -335,31 +334,31 @@ static void _isr(netdev_t *netdev)
 
     /* let's rebuild the original event (should be changed, use the index
        directly )
-    */
+     */
 
     DEBUG("[rail_netdev->isr] Rail event no %lu: 0x%lx\n", event_msg.event_count, (uint32_t) event);
 
     /* this shouldn't happen, if it does there is a race condition */
-    
+
     /* in case someone deactivates asserts, it's an error */
     if (event == RAIL_EVENTS_NONE) {
         LOG_ERROR("[rail] netdev-isr called, but no event occurred -> "
-                "race condition, please file a bug report\n");
+                  "race condition, please file a bug report\n");
         return;
     }
 
     /* the basic packet handling was done in the RAIL handler function.
        Now only the upper layer have to be informed
-    */
+     */
     if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
-        
+
         netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
-        return ;
+        return;
     }
 
-    
+
     /* no need to keep the event_msg in the queue */
-    event_msg = rail_events_get_last_event(dev);
+    rail_events_get_last_event(dev);
 
 
     /* event description c&p from RAIL API docu */
@@ -402,7 +401,7 @@ static void _isr(netdev_t *netdev)
        RAIL_EVENT_RX_ADDRESS_FILTERED) isn't known.
      */
 
-    
+
 
 
     /* TODO RAIL_EVENT_TXACK_PACKET_SENT */
@@ -442,14 +441,14 @@ static void _isr(netdev_t *netdev)
 
     /* Occurs when the transmit buffer underflows. */
     if (event & RAIL_EVENT_TX_UNDERFLOW) {
-        LOG_INFO("Rail event Tx underflow - > should not happen: race condition" 
-                " while transmitting new package\n");
+        LOG_INFO("Rail event Tx underflow - > should not happen: race condition"
+                 " while transmitting new package\n");
         /* should not happen as long as the packet is written as whole into the
            RAIL driver blob buffer*/
     }
 
     /* RAIL_EVENT_TXACK_UNDERFLOW */
-    
+
     /* Occurs when the ack transmit buffer underflows.*/
 
 

@@ -186,9 +186,9 @@ void rail_setup(rail_t *dev, const rail_params_t *params)
     dev->csma_config = _rail_csma_default_config;
 
     dev->event_count = 0;
-    
+
     /* init the ringbuffer for the rail events */
-    ringbuffer_init(&(dev->events_buffer), (char*)_rail_events_ring_buffer , sizeof(_rail_events_ring_buffer));
+    ringbuffer_init(&(dev->events_buffer), (char *)_rail_events_ring_buffer, sizeof(_rail_events_ring_buffer));
 
 }
 
@@ -503,10 +503,10 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
     data_ptr[0] = (uint8_t)data_length + 1;
 
     /* force radio state to idle, aboard running ops, so we can transmitt
-       otherwise the transceiver might be receiving/transmitting and the new 
+       otherwise the transceiver might be receiving/transmitting and the new
        transmit op fails.
        TODO ensure there are no other running ops
-    */
+     */
     RAIL_Idle(dev->rhandle, RAIL_IDLE_ABORT, true);
 
 
@@ -520,7 +520,7 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
     dev->state = RAIL_TRANSCEIVER_STATE_TX;
 
     /* check if ack req is requested */
-    
+
     if (dev->netdev.flags & NETDEV_IEEE802154_ACK_REQ) {
         tx_option |= RAIL_TX_OPTION_WAIT_FOR_ACK;
         DEBUG("tx option auto ack\n");
@@ -538,9 +538,9 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
                                             NULL);
 
     if (ret != RAIL_STATUS_NO_ERROR) {
-        LOG_ERROR("Can't start transmit - state %s -  error msg: %s \n", 
-                rail_radioState2str(RAIL_GetRadioState(dev->rhandle)),
-                rail_error2str(ret));
+        LOG_ERROR("Can't start transmit - state %s -  error msg: %s \n",
+                  rail_radioState2str(RAIL_GetRadioState(dev->rhandle)),
+                  rail_error2str(ret));
         return -1;
     }
     DEBUG("Started transmit\n");
@@ -552,7 +552,7 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
          tx done event by the callback
         - or use while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX );
      */
-    while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX );
+    while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX) {}
     return 0;
 }
 
@@ -594,7 +594,7 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
     rail_t *dev = _rail_dev;
 
     /* init event msg struct */
-    rail_event_msg_t event_msg = {.event = RAIL_EVENTS_NONE, .rx_packet = RAIL_RX_PACKET_HANDLE_INVALID};
+    rail_event_msg_t event_msg = { .event = RAIL_EVENTS_NONE, .rx_packet = RAIL_RX_PACKET_HANDLE_INVALID };
 
     /* debug/stat purpose, store event count */
     dev->event_count++;
@@ -634,26 +634,26 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
 
         return;
     }
-   
+
     /* store the rail event */
     event_msg.event = event;
 
     /*	Occurs whenever a packet is received
         Can not moved to netdev->isr(), because packet is only accessable in
         this handler
-    */
+     */
     if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
         DEBUG("Rail event rx packet received\n");
 
         /* check if packet is ok */
-        
+
         RAIL_RxPacketHandle_t rx_handle;
         rx_handle = RAIL_GetRxPacketInfo(rhandle,
                                          RAIL_RX_PACKET_HANDLE_NEWEST,
                                          &(event_msg.rx_packet_info));
 
         DEBUG("[rail] rx packet event - len p 0x%02x - len2 0x%02x\n",
-              event_msg.rx_packet_info.firstPortionData[0], 
+              event_msg.rx_packet_info.firstPortionData[0],
               event_msg.rx_packet_info.packetBytes);
 
         if (event_msg.rx_packet_info.packetStatus != RAIL_RX_PACKET_READY_SUCCESS) {
@@ -661,15 +661,15 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
 
             DEBUG("Got an packet with an error - packet status msg: %s \n",
                   rail_packetStatus2str(event_msg.rx_packet_info.packetStatus));
-            
-            /* overwrite type, because we handle it as a frame error */ 
+
+            /* overwrite type, because we handle it as a frame error */
             event_msg.event = RAIL_EVENT_RX_FRAME_ERROR;
             /* if the packet is broken, we can release the memory */
             RAIL_ReleaseRxPacket(rhandle, rx_handle);
         }
         else {
             DEBUG("Rail event rx packet good packet \n");
-            
+
             /* hold packet so it can be received from netdev thread context */
             RAIL_HoldRxPacket(rhandle);
             /* save the rx packet handle in the rail event msg */
@@ -677,7 +677,7 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
             /* save the size of the packet */
             event_msg.rx_packet_size = event_msg.rx_packet_info.packetBytes;
         }
-    } 
+    }
 
     /* add event to queue, for netdev to process */
     rail_events_add_event(dev, event_msg);
@@ -688,16 +688,16 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
 
 
 
-rail_event_msg_t rail_events_peek_last_event(rail_t *dev) 
+rail_event_msg_t rail_events_peek_last_event(rail_t *dev)
 {
     rail_event_msg_t msg;
 
     /* there should be an event */
     assert(!ringbuffer_empty(&(dev->events_buffer)));
 
-    unsigned r = ringbuffer_peek(&(dev->events_buffer), (char*) &msg, sizeof(rail_event_msg_t));
+    unsigned r = ringbuffer_peek(&(dev->events_buffer), (char *) &msg, sizeof(rail_event_msg_t));
 
-    assert (r == sizeof(rail_event_msg_t));
+    assert(r == sizeof(rail_event_msg_t));
 
     return msg;
 }
@@ -709,9 +709,9 @@ rail_event_msg_t rail_events_get_last_event(rail_t *dev)
     /* there should be an event */
     assert(!ringbuffer_empty(&(dev->events_buffer)));
 
-    unsigned r = ringbuffer_get(&(dev->events_buffer), (char*) &msg, sizeof(rail_event_msg_t));
+    unsigned r = ringbuffer_get(&(dev->events_buffer), (char *) &msg, sizeof(rail_event_msg_t));
 
-    assert (r == sizeof(rail_event_msg_t));
+    assert(r == sizeof(rail_event_msg_t));
 
     return msg;
 }
@@ -725,7 +725,7 @@ int rail_events_add_event(rail_t *dev, rail_event_msg_t event)
     }
 
 
-    unsigned r = ringbuffer_add(&(dev->events_buffer), (char*) &event, sizeof(rail_event_msg_t));
+    unsigned r = ringbuffer_add(&(dev->events_buffer), (char *) &event, sizeof(rail_event_msg_t));
 
     assert(r == sizeof(rail_event_msg_t));
 
