@@ -51,10 +51,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len);
 /* buffer for outgoing frame */
 static uint8_t frame[IEEE802154_FRAME_LEN_MAX + 1];
 
-/* message buffer for events */
-
-static msg_t _msgs_mbox[10];
-
 /* local helper functions */
 static netopt_state_t _get_state(rail_t *dev);
 static int _set_state(rail_t *dev, netopt_state_t state);
@@ -116,9 +112,6 @@ static int _init(netdev_t *netdev)
 
     netdev->driver = &rail_driver;
 
-    /* init the mbox for RAIL events */
-    mbox_init(&dev->events_mbox, _msgs_mbox, RAIL_EVENT_MBOX_SIZE);
-
     int ret;
 
     ret = rail_init(dev);
@@ -133,6 +126,8 @@ static int _init(netdev_t *netdev)
     }
 
     /* TODO state of the driver */
+
+
 
     return 0;
 }
@@ -187,12 +182,12 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 
     rail_t *dev = (rail_t *)netdev;
 
-    RAIL_RxPacketHandle_t pack_handle;
-    RAIL_RxPacketInfo_t pack_info;
-    RAIL_RxPacketDetails_t pack_details;
+    
     RAIL_Status_t ret;
 
     /*
+       TODO rewrite rationale ...
+
        the "receiving of a packet" becomes a bit ugly, since the riot driver api is
        optimized for low level hardware interaction. Here the silabs driver blob
        already did the whole low level hw interaction. By the time this methode is
@@ -217,55 +212,55 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
        and the next call for a suppost new packet would yield the packet before.
      */
 
-    /* if this is the first call for a new packet, the handle is (have to be)
-       invalid */
-//    if (dev->lastRxPacketHandle == RAIL_RX_PACKET_HANDLE_INVALID) {
-        /* get the oldest not yet processed packet */
-        //pack_handle = RAIL_RX_PACKET_HANDLE_OLDEST;
-//        pack_handle = dev->lastRxPacketHandle;
-//    }
-//    else {
-        /* otherwise this is the second, third ... call
-           we use the saved handle form the call before */
-    assert(dev->lastRxPacketHandle != RAIL_RX_PACKET_HANDLE_INVALID);
-        pack_handle = dev->lastRxPacketHandle;
-//    }
-
-    /* first packet info -> payload length and the handle of the packet
-       if pack_handle is RAIL_RX_PACKET_HANDLE_OLDEST, we get the oldest not
-       processed packet, otherwise the function returns the same handle as given
-     */
-    pack_handle = RAIL_GetRxPacketInfo(dev->rhandle,
-                                       pack_handle,
-                                       &pack_info);
-    //dev->lastRxPacketHandle = pack_handle;
 
     /* buf == NULL && len == 0 -> return packet size, no dropping */
     if (buf == NULL && len == 0) {
-        DEBUG("_recv: no dropping return packet size: 0x%02x\n", pack_info.packetBytes);
+        /* peek event_msg from queue */
+        rail_event_msg_t event_msg = rail_events_peek_last_event(dev);
+
+        assert(event_msg.event == RAIL_EVENT_RX_PACKET_RECEIVED);
+        assert(event_msg.rx_packet != RAIL_RX_PACKET_HANDLE_INVALID);
+
+        DEBUG("_recv: no dropping return packet size: 0x%02x\n", 
+                event_msg.rx_packet_info.packetBytes);
+
         /* -1 because only payload length, without the packet length byte */
-        return pack_info.packetBytes - 1;
+        return event_msg.rx_packet_info.packetBytes - 1;
     }
     /* buf == NULL && len > 0 -> return packet size + drop it */
     if (buf == NULL && len > 0) {
-        /* drop it */
-        DEBUG("_recv: drop packet - return packet size: 0x%02x\n", pack_info.packetBytes);
-        RAIL_ReleaseRxPacket(dev->rhandle, pack_handle);
-        dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
+        /* get event form queue */
+        rail_event_msg_t event_msg = rail_events_get_last_event(dev);
+
+        assert(event_msg.event == RAIL_EVENT_RX_PACKET_RECEIVED);
+        assert(event_msg.rx_packet != RAIL_RX_PACKET_HANDLE_INVALID);
+
+        /* and drop it */
+        DEBUG("_recv: drop packet - return packet size: 0x%02x\n", 
+                event_msg.rx_packet_info.packetBytes);
+
+        RAIL_ReleaseRxPacket(dev->rhandle, event_msg.rx_packet);
+
         /* -1 because only payload length, without the packet length byte */
-        return pack_info.packetBytes;
+        return event_msg.rx_packet_info.packetBytes -1;
     }
 
     /* hurray, we are finally at the stage to move the payload to the upper
        layer
      */
 
+    /* get the event from the queue */
+    rail_event_msg_t event_msg = rail_events_get_last_event(dev);
 
+    
+
+    
+    /* get more infos about the packet */
+    RAIL_RxPacketDetails_t pack_details;
     /* clear info struct */
     memset(&pack_details, 0, sizeof(RAIL_RxPacketDetails_t));
 
-    /* get more infos about the packet */
-    ret = RAIL_GetRxPacketDetails(dev->rhandle, pack_handle, &pack_details);
+    ret = RAIL_GetRxPacketDetails(dev->rhandle, event_msg.rx_packet, &pack_details);
 
     if (ret != RAIL_STATUS_NO_ERROR) {
         LOG_ERROR("Error receiving new packet / frame - msg %s\n", rail_error2str(ret));
@@ -289,23 +284,21 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
           pack_details.lqi,
           pack_details.syncWordId,
           pack_details.antennaId,
-          pack_info.packetBytes);
+          event_msg.rx_packet_info.packetBytes);
 
 #ifdef MODULE_NETSTATS_L2
     netdev->stats.rx_count++;
-    netdev->stats.rx_bytes += pack_info.packetBytes;
+    netdev->stats.rx_bytes += event_msg.rx_packet_info.packetBytes;
 #endif
 
     /* TODO question: with length info in byte 0 or without? */
     /*  - first try without, skip it (seams to work) */
-    pack_info.firstPortionData++;
-    pack_info.firstPortionBytes--;
-    pack_info.packetBytes--;
+    event_msg.rx_packet_info.firstPortionData++;
+    event_msg.rx_packet_info.firstPortionBytes--;
+    event_msg.rx_packet_info.packetBytes--;
 
     /* copy payload from packet to the provided buffer */
-    RAIL_CopyRxPacket((uint8_t *)buf, &pack_info);
-
-
+    RAIL_CopyRxPacket((uint8_t *)buf, &(event_msg.rx_packet_info));
 
     /*
        DEBUG("Print buf cpy size %d: ", cpy_size);
@@ -325,10 +318,9 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
     }
 
     /* free packet, set handle to null */
-    RAIL_ReleaseRxPacket(dev->rhandle, pack_handle);
-    dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
+    RAIL_ReleaseRxPacket(dev->rhandle, event_msg.rx_packet);
 
-    return pack_info.packetBytes;
+    return event_msg.rx_packet_info.packetBytes;
 }
 
 static void _isr(netdev_t *netdev)
@@ -336,34 +328,19 @@ static void _isr(netdev_t *netdev)
 
     rail_t *dev = (rail_t *) netdev;
 
-    //RAIL_Events_t event = dev->lastEvent;
+    /* get event from ring buffer, but leave it there */
+    rail_event_msg_t event_msg = rail_events_peek_last_event(dev);
 
-    /* let's reset it early */
-    //dev->lastEvent = RAIL_EVENTS_NONE;
-    /* TODO what happens, if another NETDEV_EVENT_ISR is send, while this 
-       function is still processed?
-    */ 
-
-   /* get event from mbox, there have to be one */
-
-    msg_t msg;
-    int ret;
-
-    ret = mbox_try_get(&dev->events_mbox, &msg);
-
-    assert (ret != 0);
+    RAIL_Events_t event = event_msg.event;
 
     /* let's rebuild the original event (should be changed, use the index
        directly )
     */
-    RAIL_Events_t event = 1ULL << (msg.type-1);
 
-    LOG_INFO("[rail-netdev-isr] Rail event: %llu\n", event);
-
-    DEBUG("rail_netdev->isr called\n");
+    DEBUG("[rail_netdev->isr] Rail event no %lu: 0x%lx\n", event_msg.event_count, (uint32_t) event);
 
     /* this shouldn't happen, if it does there is a race condition */
-    //assert(event != RAIL_EVENTS_NONE);
+    
     /* in case someone deactivates asserts, it's an error */
     if (event == RAIL_EVENTS_NONE) {
         LOG_ERROR("[rail] netdev-isr called, but no event occurred -> "
@@ -371,25 +348,34 @@ static void _isr(netdev_t *netdev)
         return;
     }
 
+    /* the basic packet handling was done in the RAIL handler function.
+       Now only the upper layer have to be informed
+    */
+    if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
+        
+        netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
+        return ;
+    }
+
+    
+    /* no need to keep the event_msg in the queue */
+    event_msg = rail_events_get_last_event(dev);
+
+
     /* event description c&p from RAIL API docu */
 
     /* rail events are a bitmask, therefore multible events within this call
        possible
      */
+    /* Occurs when a packet was sent */
+    if (event & RAIL_EVENT_TX_PACKET_SENT) {
+        DEBUG("Rail event Tx packet sent \n");
 
-
-    /* the basic packet handling was done in the RAIL handler function.
-       Now only the upper layer have to be informed
-    */
-    if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
-
-        assert(dev->lastRxPacketHandle == RAIL_RX_PACKET_HANDLE_INVALID);
-        /* get the handle for the packet from the msg */
-        dev->lastRxPacketHandle = msg.content.ptr;
-        
-        netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
-        return ;
+        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_COMPLETE);
+        return;
+        /* TODO set state? */
     }
+
 
     /* Notifies the application when searching for an ack packet has timed out */
     if (event & RAIL_EVENT_RX_ACK_TIMEOUT) {
@@ -416,14 +402,7 @@ static void _isr(netdev_t *netdev)
        RAIL_EVENT_RX_ADDRESS_FILTERED) isn't known.
      */
 
-    /* Occurs when a packet was sent */
-    if (event & RAIL_EVENT_TX_PACKET_SENT) {
-        DEBUG("Rail event Tx packet sent \n");
-
-        dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_COMPLETE);
-        return;
-        /* TODO set state? */
-    }
+    
 
 
     /* TODO RAIL_EVENT_TXACK_PACKET_SENT */
@@ -752,7 +731,7 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
                 dev->csma_config.csmaTries = 0;
             }
             else {
-                // set it to the default value?
+                /* TODO set it to the default value? */
                 dev->csma_config.csmaTries = RAIL_DEFAULT_CSMA_TRIES;
             }
             res = sizeof(netopt_enable_t);

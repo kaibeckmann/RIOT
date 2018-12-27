@@ -137,6 +137,11 @@ RAIL_DECLARE_TX_POWER_VBAT_CURVES(piecewiseSegments, curvesSg, curves24Hp, curve
 /* tx buffer */
 static uint8_t _transmit_buffer[IEEE802154_FRAME_LEN_MAX + 1];
 
+
+/* ring buffer for rail events */
+
+static uint8_t _rail_events_ring_buffer[sizeof(rail_event_msg_t) * RAIL_EVENT_MSG_COUNT];
+
 /********************* LOKAL VARIABLES ******************************/
 
 /* ref to rail_t/ netdev_t struct for this driver
@@ -176,13 +181,14 @@ void rail_setup(rail_t *dev, const rail_params_t *params)
     dev->promiscuousMode = false;
 
     dev->state = RAIL_TRANSCEIVER_STATE_UNINITIALIZED;
-    dev->lastRxPacketHandle = RAIL_RX_PACKET_HANDLE_INVALID;
 
     /* TODO config for 868/912MHz different? */
     dev->csma_config = _rail_csma_default_config;
 
-    //dev->lastEvent = RAIL_EVENTS_NONE;
+    dev->event_count = 0;
     
+    /* init the ringbuffer for the rail events */
+    ringbuffer_init(&(dev->events_buffer), (char*)_rail_events_ring_buffer , sizeof(_rail_events_ring_buffer));
 
 }
 
@@ -262,13 +268,8 @@ int _rail_PA_init(rail_t *dev)
 
     return 0;
 }
-int bit_pos (uint64_t a)
-{
-    const uint64_t magic_multiplier = 
-         (( 7ULL << 56) | (15ULL << 48) | (23ULL << 40) | (31ULL << 32) |
-          (39ULL << 24) | (47ULL << 16) | (55ULL <<  8) | (63ULL <<  0));
-    return (int)(((a >> 7) * magic_multiplier) >> 56);
-}
+
+
 int rail_init(rail_t *dev)
 {
 
@@ -520,11 +521,11 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
 
     /* check if ack req is requested */
     
-//    if (dev->netdev.flags & NETDEV_IEEE802154_ACK_REQ) {
-//        tx_option |= RAIL_TX_OPTION_WAIT_FOR_ACK;
-//        DEBUG("tx option auto ack\n");
+    if (dev->netdev.flags & NETDEV_IEEE802154_ACK_REQ) {
+        tx_option |= RAIL_TX_OPTION_WAIT_FOR_ACK;
+        DEBUG("tx option auto ack\n");
         /* TODO wait for ack, necessary or done by layer above? */
-//    }
+    }
 
     DEBUG("[rail] transmit - radio state: %s\n", rail_radioState2str(RAIL_GetRadioState(dev->rhandle)));
 
@@ -551,7 +552,7 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
          tx done event by the callback
         - or use while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX );
      */
-  //  while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX );
+    while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX );
     return 0;
 }
 
@@ -577,23 +578,12 @@ int rail_start_rx(rail_t *dev)
         RAIL_IEEE802154_SetPromiscuousMode(dev->rhandle, false);
     }
 
-
     /* set channel to listen to */
     RAIL_StartRx(dev->rhandle, dev->netdev.chan, NULL);
     dev->state = RAIL_TRANSCEIVER_STATE_RX;
     return 0;
 }
 
-/* c&p https://stackoverflow.com/a/32339674 */
-/*
-static int _bit_pos (uint64_t a)
-{
-    const uint64_t magic_multiplier = 
-         (( 7ULL << 56) | (15ULL << 48) | (23ULL << 40) | (31ULL << 32) |
-          (39ULL << 24) | (47ULL << 16) | (55ULL <<  8) | (63ULL <<  0));
-    return (int)(((a >> 7) * magic_multiplier) >> 56);
-}
-*/
 /* RAIL blob event handler */
 /* moved everything possible to netdev->isr()
  */
@@ -602,24 +592,20 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
 
     /* TODO get the right netdev struct */
     rail_t *dev = _rail_dev;
-    msg_t msg;
 
+    /* init event msg struct */
+    rail_event_msg_t event_msg = {.event = RAIL_EVENTS_NONE, .rx_packet = RAIL_RX_PACKET_HANDLE_INVALID};
 
-    /* if it not 0, than the netdev->isr() is busy processing the last event.
-       This is not good.
-    */
-    //assert(dev->lastEvent == RAIL_EVENTS_NONE);
+    /* debug/stat purpose, store event count */
+    dev->event_count++;
+
+    event_msg.event_count = dev->event_count;
+
 
     /* rail events are a bitmask, therefore multible events within this call
-       possible
+       are possible -> TODO
      */
-    LOG_INFO("[rail-handler] Rail event: %llu\n", event);
 
-    /* this might be necessary to be handled here 
-        ignore other possible events and don't forward to netdev->isr()
-    
-       TODO move to netdev->isr() and test 
-    */
     /* Indicates a Data Request is being received when using IEEE 802.15.4
        functionality. */
     if (event & RAIL_EVENT_IEEE802154_DATA_REQUEST_COMMAND) {
@@ -646,17 +632,11 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
 
         assert(ret == RAIL_STATUS_NO_ERROR);
 
-        //dev->lastEvent = RAIL_EVENTS_NONE;
-
         return;
     }
    
-    /* store the event in the netdev structure, so the netdev->isr() can access
-       it. This can cause race conditions.
-
-       TODO mutex, pause transceiver ? how to solve race condition problem?
-    */
-    //dev->lastEvent = event;
+    /* store the rail event */
+    event_msg.event = event;
 
     /*	Occurs whenever a packet is received
         Can not moved to netdev->isr(), because packet is only accessable in
@@ -666,30 +646,24 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
         DEBUG("Rail event rx packet received\n");
 
         /* check if packet is ok */
-        RAIL_RxPacketInfo_t rx_packet_info;
+        
         RAIL_RxPacketHandle_t rx_handle;
         rx_handle = RAIL_GetRxPacketInfo(rhandle,
                                          RAIL_RX_PACKET_HANDLE_NEWEST,
-                                         &rx_packet_info);
+                                         &(event_msg.rx_packet_info));
 
         DEBUG("[rail] rx packet event - len p 0x%02x - len2 0x%02x\n",
-              rx_packet_info.firstPortionData[0], rx_packet_info.packetBytes);
+              event_msg.rx_packet_info.firstPortionData[0], 
+              event_msg.rx_packet_info.packetBytes);
 
-        if (rx_packet_info.packetStatus != RAIL_RX_PACKET_READY_SUCCESS) {
+        if (event_msg.rx_packet_info.packetStatus != RAIL_RX_PACKET_READY_SUCCESS) {
             /* error */
 
             DEBUG("Got an packet with an error - packet status msg: %s \n",
-                  rail_packetStatus2str(rx_packet_info.packetStatus));
-
-            /* "simulate" a normal RAIL event, so it can be handled in
-                netdev->isr() */
-            //dev->lastEvent = RAIL_EVENT_RX_FRAME_ERROR;
+                  rail_packetStatus2str(event_msg.rx_packet_info.packetStatus));
             
-            /* the event is a bitfield and an uint64_t, the type of msg is
-               only uint16_t, so we map set flag to number
-            */
-            msg.type = __builtin_ffsll(RAIL_EVENT_RX_FRAME_ERROR);
-            mbox_put(&dev->events_mbox, &msg);
+            /* overwrite type, because we handle it as a frame error */ 
+            event_msg.event = RAIL_EVENT_RX_FRAME_ERROR;
             /* if the packet is broken, we can release the memory */
             RAIL_ReleaseRxPacket(rhandle, rx_handle);
         }
@@ -698,23 +672,82 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
             
             /* hold packet so it can be received from netdev thread context */
             RAIL_HoldRxPacket(rhandle);
-            /* save the event type and the handle, the handle is a pointer */
-            msg.type = __builtin_ffsll(RAIL_EVENT_RX_PACKET_RECEIVED);
-            msg.content.ptr = (void*) rx_handle;
-            mbox_put(&dev->events_mbox, &msg);
+            /* save the rx packet handle in the rail event msg */
+            event_msg.rx_packet = rx_handle;
+            /* save the size of the packet */
+            event_msg.rx_packet_size = event_msg.rx_packet_info.packetBytes;
         }
-    }
+    } 
 
-    /* create a msg, inform the isr */
-    /* TODO there cloud be multible events in one RAIL_Events_t, loop? */
-    msg.type = __builtin_ffsll(event);
+    /* add event to queue, for netdev to process */
+    rail_events_add_event(dev, event_msg);
 
     /* let the netdev->isr() handle the rest */
     dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_ISR);
-    
 }
 
+
+
+rail_event_msg_t rail_events_peek_last_event(rail_t *dev) 
+{
+    rail_event_msg_t msg;
+
+    /* there should be an event */
+    assert(!ringbuffer_empty(&(dev->events_buffer)));
+
+    unsigned r = ringbuffer_peek(&(dev->events_buffer), (char*) &msg, sizeof(rail_event_msg_t));
+
+    assert (r == sizeof(rail_event_msg_t));
+
+    return msg;
+}
+/* TODO rail_event_msg as an out parameter */
+rail_event_msg_t rail_events_get_last_event(rail_t *dev)
+{
+    rail_event_msg_t msg;
+
+    /* there should be an event */
+    assert(!ringbuffer_empty(&(dev->events_buffer)));
+
+    unsigned r = ringbuffer_get(&(dev->events_buffer), (char*) &msg, sizeof(rail_event_msg_t));
+
+    assert (r == sizeof(rail_event_msg_t));
+
+    return msg;
+}
+
+int rail_events_add_event(rail_t *dev, rail_event_msg_t event)
+{
+    if (ringbuffer_full(&(dev->events_buffer)) != 0) {
+        LOG_ERROR("Rail event ring buffer is full\n");
+        LOG_ERROR("Event count %lu\n", dev->event_count);
+        return -1;
+    }
+
+
+    unsigned r = ringbuffer_add(&(dev->events_buffer), (char*) &event, sizeof(rail_event_msg_t));
+
+    assert(r == sizeof(rail_event_msg_t));
+
+    return 0;
+}
+
+
+
 #ifdef DEVELHELP
+
+const char *rail_event2str(RAIL_Events_t event)
+{
+    if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
+        return "RAIL_EVENT_RX_PACKET_RECEIVED";
+    }
+    if (event & RAIL_EVENT_TX_PACKET_SENT) {
+        return "RAIL_EVENT_TX_PACKET_SENT";
+    }
+
+    return "RAIL EVENT: TODO";
+
+}
 const char *rail_error2str(RAIL_Status_t status)
 {
 
