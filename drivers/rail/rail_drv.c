@@ -45,10 +45,10 @@ static RAIL_ChannelConfigEntryAttr_t radio_channel_entry_868;
 static RAIL_ChannelConfigEntryAttr_t radio_channel_entry_915;
 #endif
 
-/* 
+/*
  *  channel - 0 - symbol rate 25000 - bit rate 100000
- * 
- * 
+ *
+ *
  */
 static const RAIL_ChannelConfigEntry_t radio_channel_entry[] = {
 #if (RAIL_RADIO_BAND == 868)
@@ -317,7 +317,7 @@ int rail_init(rail_t *dev)
 
     /* prepare barrier for init done */
     mutex_trylock(&_rail_init_done);
-    
+
     /* Init rail driver blob instance */
     dev->rhandle = RAIL_Init(&(dev->rconfig), _rail_InitCompleteCallbackPtr_t);
 
@@ -327,7 +327,7 @@ int rail_init(rail_t *dev)
     }
     /* wait till init is done */
     mutex_lock(&_rail_init_done);
-    
+
 
     /* config data management, easier version with packets */
 
@@ -364,17 +364,17 @@ int rail_init(rail_t *dev)
 
 #elif (RAIL_RADIO_BAND == 868) || (RAIL_RADIO_BAND == 915)
     /* from gecko sdk 2.4 there is a official config api for sub ghz radio
-	   but it does not support channel 0
+       but it does not support channel 0
 
-    
+
      */
 #if (RAIL_RADIO_BAND == 868)
     DEBUG("using 868MHz radio band\n");
-    /*ret = 	RAIL_IEEE802154_ConfigGB863MHzRadio(dev->rhandle); */
-	ret = RAIL_ConfigChannels(dev->rhandle, &_rail_radio_channel_config, NULL);
+    /*ret =     RAIL_IEEE802154_ConfigGB863MHzRadio(dev->rhandle); */
+    ret = RAIL_ConfigChannels(dev->rhandle, &_rail_radio_channel_config, NULL);
 #elif (RAIL_RADIO_BAND == 915)
     DEBUG("using 915MHz radio band\n");
-    /*ret = 	RAIL_IEEE802154_ConfigGB915MHzRadio(dev->rhandle);*/
+    /*ret =     RAIL_IEEE802154_ConfigGB915MHzRadio(dev->rhandle);*/
     ret = RAIL_ConfigChannels(dev->rhandle, &_rail_radio_channel_config, NULL);
 #endif
 
@@ -392,7 +392,7 @@ int rail_init(rail_t *dev)
         LOG_ERROR("Can not init rail ieee 802.15.4 support - error msg: %s\n", rail_error2str(ret));
         return -1;
     }
-	/* notwendig? */
+    /* notwendig? */
     ret = RAIL_IEEE802154_AcceptFrames(dev->rhandle, RAIL_IEEE802154_ACCEPT_STANDARD_FRAMES);
     if (ret != RAIL_STATUS_NO_ERROR) {
         LOG_ERROR("Can not accept default ieee 802.15.4 frames - error msg: %s\n", rail_error2str(ret));
@@ -554,18 +554,18 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
     /* start tx with settings in csma_config
      */
     /*
-    RAIL_Status_t ret = RAIL_StartCcaCsmaTx(dev->rhandle,
+       RAIL_Status_t ret = RAIL_StartCcaCsmaTx(dev->rhandle,
                                             dev->netdev.chan,
                                             tx_option,
                                             &dev->csma_config,
                                             NULL);
-    */
-   
+     */
+
     RAIL_Status_t ret = RAIL_StartTx(dev->rhandle,
                                      dev->netdev.chan,
                                      RAIL_TX_OPTIONS_DEFAULT,
                                      NULL
-                                    );
+                                     );
 
     if (ret != RAIL_STATUS_NO_ERROR) {
         LOG_ERROR("Can't start transmit - current state %s - error msg: %s \n",
@@ -712,39 +712,39 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
             event_msg.rx_packet_size = event_msg.rx_packet_info.packetBytes;
         }
     }
-	/* debug events */
+    /* debug events */
 
 
 
-    if (event & RAIL_EVENT_TX_START_CCA  ) {
+    if (event & RAIL_EVENT_TX_START_CCA) {
 
         DEBUG("RAIL_EVENT_TX_START_CCA\n");
     }
-    if (event & RAIL_EVENT_TX_CCA_RETRY) { 
+    if (event & RAIL_EVENT_TX_CCA_RETRY) {
 
         DEBUG("RAIL_EVENT_TX_CCA_RETRY\n");
     }
-    if (event & RAIL_EVENT_TX_CHANNEL_BUSY ) {
+    if (event & RAIL_EVENT_TX_CHANNEL_BUSY) {
 
         DEBUG("RAIL_EVENT_TX_CHANNEL_BUSY\n");
     }
-    if (event & RAIL_EVENT_TX_CHANNEL_CLEAR ) {
+    if (event & RAIL_EVENT_TX_CHANNEL_CLEAR) {
 
         DEBUG("RAIL_EVENT_TX_CHANNEL_CLEAR\n");
     }
-    if (event & RAIL_EVENT_TXACK_UNDERFLOW ) {
+    if (event & RAIL_EVENT_TXACK_UNDERFLOW) {
 
         DEBUG("RAIL_EVENT_TXACK_UNDERFLOW\n");
     }
-    if (event & RAIL_EVENT_TX_UNDERFLOW ) {
-    
+    if (event & RAIL_EVENT_TX_UNDERFLOW) {
+
         DEBUG("RAIL_EVENT_TX_UNDERFLOW\n");
     }
     if (event & RAIL_EVENT_TXACK_BLOCKED) {
 
         DEBUG("RAIL_EVENT_TXACK_BLOCKED\n");
     }
-    if (event & RAIL_EVENT_TX_BLOCKED ) {
+    if (event & RAIL_EVENT_TX_BLOCKED) {
 
         DEBUG("RAIL_EVENT_TX_BLOCKED\n");
     }
@@ -781,7 +781,7 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
 
         DEBUG("RAIL_EVENT_RX_PACKET_ABORTED\n");
     }
-    if (event & RAIL_EVENT_RX_SCHEDULED_RX_END ) {
+    if (event & RAIL_EVENT_RX_SCHEDULED_RX_END) {
 
         DEBUG("RAIL_EVENT_RX_SCHEDULED_RX_END\n");
     }
@@ -868,24 +868,26 @@ int rail_events_add_event(rail_t *dev, rail_event_msg_t event)
     return 0;
 }
 
-static void _rail_InitCompleteCallbackPtr_t(RAIL_Handle_t railHandle) {
+static void _rail_InitCompleteCallbackPtr_t(RAIL_Handle_t railHandle)
+{
     DEBUG("rail init done callback free lock - handle %p \n", railHandle);
     mutex_unlock(&_rail_init_done);
 }
 
 void RAILCb_AssertFailed(RAIL_Handle_t railHandle, uint32_t errorCode)
 {
-  static const char* railErrorMessages[] = RAIL_ASSERT_ERROR_MESSAGES;
-  const char *errorMessage = "Unknown";
-  (void) railHandle;
-  // If this error code is within the range of known error messages then use
-  // the appropriate error message.
-  if (errorCode < (sizeof(railErrorMessages) / sizeof(char*))) {
-    errorMessage = railErrorMessages[errorCode];
-  }
-  LOG_ERROR("%s\n",errorMessage);
-  // Reset the chip since an assert is a fatal error
-  NVIC_SystemReset();
+    static const char *railErrorMessages[] = RAIL_ASSERT_ERROR_MESSAGES;
+    const char *errorMessage = "Unknown";
+
+    (void) railHandle;
+    // If this error code is within the range of known error messages then use
+    // the appropriate error message.
+    if (errorCode < (sizeof(railErrorMessages) / sizeof(char *))) {
+        errorMessage = railErrorMessages[errorCode];
+    }
+    LOG_ERROR("%s\n", errorMessage);
+    // Reset the chip since an assert is a fatal error
+    NVIC_SystemReset();
 }
 
 #ifdef DEVELHELP
