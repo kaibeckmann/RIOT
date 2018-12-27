@@ -408,8 +408,8 @@ int rail_init(rail_t *dev)
     }
 
     /* setup transmitt buffer */
-    ret = RAIL_SetTxFifo(dev->rhandle, _transmit_buffer, 0, sizeof(_transmit_buffer));
-    if (ret != RAIL_STATUS_NO_ERROR) {
+    uint16_t buf_size = RAIL_SetTxFifo(dev->rhandle, _transmit_buffer, 0, sizeof(_transmit_buffer));
+    if (buf_size == 0) {
         LOG_ERROR("Can not set TxFifo - error msg: %s\n", rail_error2str(ret));
         return -1;
     }
