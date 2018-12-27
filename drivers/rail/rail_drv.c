@@ -409,6 +409,10 @@ int rail_init(rail_t *dev)
 
     /* setup transmitt buffer */
     ret = RAIL_SetTxFifo(dev->rhandle, _transmit_buffer, 0, sizeof(_transmit_buffer));
+    if (ret != RAIL_STATUS_NO_ERROR) {
+        LOG_ERROR("Can not set TxFifo - error msg: %s\n", rail_error2str(ret));
+        return -1;
+    }
 
     /* setup PTI */
 #if (RAIL_PTI_ENABLED == 1)
@@ -563,7 +567,7 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
 
     RAIL_Status_t ret = RAIL_StartTx(dev->rhandle,
                                      dev->netdev.chan,
-                                     RAIL_TX_OPTIONS_DEFAULT,
+                                     tx_option,
                                      NULL
                                      );
 
