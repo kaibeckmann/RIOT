@@ -5,7 +5,7 @@
  * General Public License v2.1. See the file LICENSE in the top level
  * directory for more details.
  */
-ann ja eh niemand in die HS ...
+
 
 #include <string.h>
 
@@ -215,7 +215,8 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
     /* buf == NULL && len == 0 -> return packet size, no dropping */
     if (buf == NULL && len == 0) {
         /* peek event_msg from queue */
-        rail_event_msg_t event_msg = rail_events_peek_last_event(dev);
+        rail_event_msg_t event_msg;
+        rail_event_queue_peek(&(dev->event_queue), &event_msg);
 
         assert(event_msg.event == RAIL_EVENT_RX_PACKET_RECEIVED);
         assert(event_msg.rx_packet != RAIL_RX_PACKET_HANDLE_INVALID);
@@ -228,8 +229,9 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
     }
     /* buf == NULL && len > 0 -> return packet size + drop it */
     if (buf == NULL && len > 0) {
-        /* get event form queue */
-        rail_event_msg_t event_msg = rail_events_get_last_event(dev);
+        /* get event from queue */
+        rail_event_msg_t event_msg;
+        rail_event_queue_poll(&(dev->event_queue), &event_msg);
 
         assert(event_msg.event == RAIL_EVENT_RX_PACKET_RECEIVED);
         assert(event_msg.rx_packet != RAIL_RX_PACKET_HANDLE_INVALID);
@@ -248,8 +250,9 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
        layer
      */
 
-    /* get the event from the queue */
-    rail_event_msg_t event_msg = rail_events_get_last_event(dev);
+    /* get and removce the event from the event queue */
+    rail_event_msg_t event_msg;
+    rail_event_queue_poll(&(dev->event_queue), &event_msg);
 
 
 
@@ -327,7 +330,8 @@ static void _isr(netdev_t *netdev)
     rail_t *dev = (rail_t *) netdev;
 
     /* get event from ring buffer, but leave it there */
-    rail_event_msg_t event_msg = rail_events_peek_last_event(dev);
+    rail_event_msg_t event_msg;
+    rail_event_queue_peek(&(dev->event_queue), &event_msg);
 
     RAIL_Events_t event = event_msg.event;
 
@@ -351,8 +355,7 @@ static void _isr(netdev_t *netdev)
 
 
     /* no need to keep the event_msg in the queue for the other possible events */
-    rail_events_get_last_event(dev);
-
+    rail_event_queue_poll(&(dev->event_queue), NULL);
 
     /* event description c&p from RAIL API docu */
 

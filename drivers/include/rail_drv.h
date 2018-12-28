@@ -20,10 +20,11 @@
 #include "net/gnrc/nettype.h"
 #include "net/eui64.h"
 
-#include "mbox.h"
 #include "ringbuffer.h"
 
 #include "rail.h"
+
+#include "rail_helper.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,9 +62,8 @@ extern "C" {
 #define RAIL_TRANSCEIVER_STATE_RX               0x04
 #define RAIL_TRANSCEIVER_STATE_TX               0x05
 
-#define RAIL_EVENT_MBOX_SIZE  10
 
-#define RAIL_EVENT_MSG_COUNT 10
+
 
 #define RAIL_DEFAULT_PANID         (IEEE802154_DEFAULT_PANID)
 #define RAIL_DEFAULT_TXPOWER       (IEEE802154_DEFAULT_TXPOWER)
@@ -88,15 +88,7 @@ typedef struct rail_params {
 
 } rail_params_t;
 
-typedef struct {
 
-    RAIL_Events_t event;
-    RAIL_RxPacketHandle_t rx_packet;
-    RAIL_RxPacketInfo_t rx_packet_info;
-    uint16_t rx_packet_size;
-    uint32_t event_count;
-
-} rail_event_msg_t;
 
 
 typedef struct {
@@ -114,7 +106,7 @@ typedef struct {
 
     uint8_t state;              /* state of radio transceiver */
 
-    ringbuffer_t events_buffer; /* ring buffer for incomming events */
+    rail_event_queue_t event_queue; /* event queue for the netdev layer */
 
     uint32_t event_count;       /* stat / debug info, how many rail events have occured */
 
@@ -122,13 +114,6 @@ typedef struct {
     eui64_t eui;
 } rail_t;
 
-
-
-rail_event_msg_t rail_events_peek_last_event(rail_t *dev);
-
-rail_event_msg_t rail_events_get_last_event(rail_t *dev);
-
-int rail_events_add_event(rail_t *dev, rail_event_msg_t event);
 
 
 void rail_setup(rail_t *dev, const rail_params_t *params);
@@ -139,15 +124,6 @@ int rail_init(rail_t *dev);
 int rail_start_rx(rail_t *dev);
 
 int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length);
-
-#ifdef DEVELHELP
-const char *rail_error2str(RAIL_Status_t status);
-const char *rail_packetStatus2str(RAIL_RxPacketStatus_t status);
-
-const char *rail_radioState2str(RAIL_RadioState_t state);
-
-const char *rail_event2str(RAIL_Events_t event);
-#endif /* DEVELHELP*/
 
 #ifdef __cplusplus
 }

@@ -142,10 +142,6 @@ RAIL_DECLARE_TX_POWER_VBAT_CURVES(piecewiseSegments, curvesSg, curves24Hp, curve
 static uint8_t _transmit_buffer[IEEE802154_FRAME_LEN_MAX + 1];
 
 
-/* ring buffer for rail events */
-
-static uint8_t _rail_events_ring_buffer[sizeof(rail_event_msg_t) * RAIL_EVENT_MSG_COUNT];
-
 /********************* LOKAL VARIABLES ******************************/
 
 /* ref to rail_t/ netdev_t struct for this driver
@@ -195,9 +191,8 @@ void rail_setup(rail_t *dev, const rail_params_t *params)
 
     dev->event_count = 0;
 
-    /* init the ringbuffer for the rail events */
-    ringbuffer_init(&(dev->events_buffer), (char *)_rail_events_ring_buffer, sizeof(_rail_events_ring_buffer));
-
+    /* init the queue for the rail events */
+    rail_event_queue_init(&(dev->event_queue));
 }
 
 /* init Packet Trace (PTI) functionality -> usefull for debugging */
@@ -820,152 +815,10 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
 
 
     /* add event to queue, for netdev to process */
-    rail_events_add_event(dev, event_msg);
+    rail_event_queue_add(&(dev->event_queue), &event_msg);
 
     /* let the netdev->isr() handle the rest */
     dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_ISR);
-}
-
-
-
-rail_event_msg_t rail_events_peek_last_event(rail_t *dev)
-{
-    rail_event_msg_t msg;
-
-    /* there should be an event */
-    assert(!ringbuffer_empty(&(dev->events_buffer)));
-
-    unsigned r = ringbuffer_peek(&(dev->events_buffer), (char *) &msg, sizeof(rail_event_msg_t));
-
-    assert(r == sizeof(rail_event_msg_t));
-
-    return msg;
-}
-/* TODO rail_event_msg as an out parameter */
-rail_event_msg_t rail_events_get_last_event(rail_t *dev)
-{
-    rail_event_msg_t msg;
-
-    /* there should be an event */
-    assert(!ringbuffer_empty(&(dev->events_buffer)));
-
-    unsigned r = ringbuffer_get(&(dev->events_buffer), (char *) &msg, sizeof(rail_event_msg_t));
-
-    assert(r == sizeof(rail_event_msg_t));
-
-    return msg;
-}
-
-int rail_events_add_event(rail_t *dev, rail_event_msg_t event)
-{
-    if (ringbuffer_full(&(dev->events_buffer)) != 0) {
-        LOG_ERROR("Rail event ring buffer is full\n");
-        LOG_ERROR("Event count %lu\n", dev->event_count);
-        return -1;
-    }
-
-
-    unsigned r = ringbuffer_add(&(dev->events_buffer), (char *) &event, sizeof(rail_event_msg_t));
-
-    assert(r == sizeof(rail_event_msg_t));
-
-    return 0;
-}
-
-static void _rail_InitCompleteCallbackPtr_t(RAIL_Handle_t railHandle)
-{
-    DEBUG("rail init done callback free lock - handle %p \n", railHandle);
-    mutex_unlock(&_rail_init_done);
-}
-
-void RAILCb_AssertFailed(RAIL_Handle_t railHandle, uint32_t errorCode)
-{
-    static const char *railErrorMessages[] = RAIL_ASSERT_ERROR_MESSAGES;
-    const char *errorMessage = "Unknown";
-
-    (void) railHandle;
-    // If this error code is within the range of known error messages then use
-    // the appropriate error message.
-    if (errorCode < (sizeof(railErrorMessages) / sizeof(char *))) {
-        errorMessage = railErrorMessages[errorCode];
-    }
-    LOG_ERROR("%s\n", errorMessage);
-    // Reset the chip since an assert is a fatal error
-    NVIC_SystemReset();
-}
-
-#ifdef DEVELHELP
-
-const char *rail_event2str(RAIL_Events_t event)
-{
-    if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
-        return "RAIL_EVENT_RX_PACKET_RECEIVED";
-    }
-    if (event & RAIL_EVENT_TX_PACKET_SENT) {
-        return "RAIL_EVENT_TX_PACKET_SENT";
-    }
-
-    return "RAIL EVENT: TODO";
 
 }
-const char *rail_error2str(RAIL_Status_t status)
-{
 
-    switch (status) {
-        case (RAIL_STATUS_NO_ERROR):
-            return "No error";
-        case (RAIL_STATUS_INVALID_PARAMETER):
-            return "Invalid parameter";
-        case (RAIL_STATUS_INVALID_STATE):
-            return "Invalid state";
-        case (RAIL_STATUS_INVALID_CALL):
-            return "Invalid Call";
-        case (RAIL_STATUS_SUSPENDED):
-            return "Status suspended";
-    }
-    return "Error code unknown";
-}
-
-const char *rail_packetStatus2str(RAIL_RxPacketStatus_t status)
-{
-
-    switch (status) {
-        case (RAIL_RX_PACKET_NONE):
-            return "Radio is idle or searching for a packet.";
-        case (RAIL_RX_PACKET_ABORT_FORMAT):
-            return "Format/Length error.";
-        case (RAIL_RX_PACKET_ABORT_FILTERED):
-            return "Filtering error (address).";
-        case (RAIL_RX_PACKET_ABORT_ABORTED):
-            return "Aborted error.";
-        case (RAIL_RX_PACKET_ABORT_OVERFLOW):
-            return "Receive overflowed buffer.";
-        case (RAIL_RX_PACKET_ABORT_CRC_ERROR):
-            return "CRC error aborted.";
-        case (RAIL_RX_PACKET_READY_CRC_ERROR):
-            return "CRC error accepted (details available).";
-        case (RAIL_RX_PACKET_READY_SUCCESS):
-            return "Success (details available).";
-        case (RAIL_RX_PACKET_RECEIVING):
-            return "Receiving in progress.";
-        default:
-            return "Unknown status";
-    }
-}
-
-const char *rail_radioState2str(RAIL_RadioState_t state)
-{
-    switch (state) {
-        case (RAIL_RF_STATE_INACTIVE):
-            return "state inactive";
-        case (RAIL_RF_STATE_ACTIVE):
-            return "state active / idle";
-        case (RAIL_RF_STATE_RX):
-            return "state rx";
-        case (RAIL_RF_STATE_TX):
-            return "state tx";
-        default:
-            return "unknown state";
-    }
-}
-#endif /* DEVELHELP */
