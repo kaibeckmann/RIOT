@@ -5,6 +5,7 @@
  * General Public License v2.1. See the file LICENSE in the top level
  * directory for more details.
  */
+ann ja eh niemand in die HS ...
 
 #include <string.h>
 
@@ -330,15 +331,9 @@ static void _isr(netdev_t *netdev)
 
     RAIL_Events_t event = event_msg.event;
 
-    /* let's rebuild the original event (should be changed, use the index
-       directly )
-     */
-
     DEBUG("[rail_netdev->isr] Rail event no %lu: 0x%lx\n", event_msg.event_count, (uint32_t) event);
 
     /* this shouldn't happen, if it does there is a race condition */
-
-    /* in case someone deactivates asserts, it's an error */
     if (event == RAIL_EVENTS_NONE) {
         LOG_ERROR("[rail] netdev-isr called, but no event occurred -> "
                   "race condition, please file a bug report\n");
@@ -355,7 +350,7 @@ static void _isr(netdev_t *netdev)
     }
 
 
-    /* no need to keep the event_msg in the queue */
+    /* no need to keep the event_msg in the queue for the other possible events */
     rail_events_get_last_event(dev);
 
 
@@ -625,7 +620,7 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             break;
         case (NETOPT_ADDRESS):
             assert(len <= sizeof(uint16_t));
-            /* RIOT uses Big endian, RAIL driver blog little ... */
+            /* RIOT uses Big endian, RAIL driver blob little endian ... */
 
             le_u16 = ntohs(*((const uint16_t *)val));
 

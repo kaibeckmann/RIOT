@@ -78,6 +78,13 @@ enum rail_transceiver_config_frequency {
 
 typedef struct rail_params {
     enum rail_transceiver_config_frequency freq;
+    /* RAIL_RADIO_PA_VOLTAGE */
+    /* RAIL_DEFAULT_TXPOWER */
+    /* RAIL_DEFAULT_PANID */
+    /* IEEE802154_DEFAULT_CHANNEL */
+    /* isPanCoordinator */
+    /* auto ack on / off */
+    /* auto ack timeout */
 
 } rail_params_t;
 
