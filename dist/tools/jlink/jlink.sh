@@ -69,6 +69,8 @@ _JLINK_SPEED=2000
 # default terminal frontend
 _JLINK_TERMPROG=${RIOTTOOLS}/pyterm/pyterm
 _JLINK_TERMFLAGS="-ts 19021"
+# VCOM telnet terminal
+_JLINK_VCOM_PORT=4901
 
 #
 # a couple of tests for certain configuration options
@@ -111,6 +113,9 @@ test_ports() {
     if [ -z "${TELNET_PORT}" ]; then
         TELNET_PORT=${_TELNET_PORT}
     fi
+    if [ -z "${JLINK_VCOM_PORT}" ]; then
+        JLINK_VCOM_PORT=${_JLINK_VCOM_PORT}
+    fi
 }
 
 test_elffile() {
@@ -131,6 +136,16 @@ test_serial() {
     if [ -n "${JLINK_SERIAL}" ]; then
         JLINK_SERIAL_SERVER="-select usb='${JLINK_SERIAL}'"
         JLINK_SERIAL="-SelectEmuBySN '${JLINK_SERIAL}'"
+    fi
+}
+
+test_ip() {
+    if [ -n "${JLINK_IP}" ]; then
+        JLINK_SERIAL_SERVER="-select ip='${JLINK_IP}'"
+        JLINK_SERIAL="-ip '${JLINK_IP}'"
+        if [ -z "${JLINK_TERMFLAGS}" ]; then
+            JLINK_TERMFLAGS="-ts ${JLINK_IP}:${JLINK_VCOM_PORT}"
+        fi
     fi
 }
 
@@ -156,6 +171,7 @@ do_flash() {
     BINFILE=$1
     test_config
     test_serial
+    test_ip
     test_binfile
     # clear any existing contents in burn file
     /bin/echo -n "" > ${BINDIR}/burn.seg
@@ -184,6 +200,7 @@ do_debug() {
     ELFFILE=$1
     test_config
     test_serial
+    test_ip
     test_elffile
     test_ports
     test_tui
@@ -219,6 +236,7 @@ do_debugserver() {
 do_reset() {
     test_config
     test_serial
+    test_ip
     # reset the board
     sh -c "${JLINK} ${JLINK_SERIAL} \
                     -ExitOnError 1 \
@@ -229,9 +247,20 @@ do_reset() {
                     -commandfile '${JLINK_RESET_FILE}'"
 }
 
+do_vcom_term() {
+    test_config
+    test_serial
+    test_ip
+    test_term
+
+    sh -c "${JLINK_TERMPROG} ${JLINK_TERMFLAGS}"
+    
+}
+
 do_term() {
     test_config
     test_serial
+    test_ip
     test_term
 
     # temporary file that save the JLink pid
@@ -289,6 +318,10 @@ case "${ACTION}" in
   term_rtt)
     echo "### Starting RTT terminal ###"
     do_term
+    ;;
+  term_vcom)
+    echo "### Starting VCOM terminal"
+    do_vcom_term
     ;;
   *)
     echo "Usage: $0 {flash|debug|debug-server|reset}"

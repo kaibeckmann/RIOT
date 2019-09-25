@@ -3,6 +3,12 @@ DEBUGGER = $(RIOTTOOLS)/jlink/jlink.sh
 DEBUGSERVER = $(RIOTTOOLS)/jlink/jlink.sh
 RESET ?= $(RIOTTOOLS)/jlink/jlink.sh
 
+# if IP for debug adapter is set, use VCOM over telnet
+ifneq (,$(JLINK_IP))
+  TERMPROG = $(RIOTTOOLS)/jlink/jlink.sh
+  TERMFLAGS = term_vcom
+endif
+
 FLASHFILE ?= $(BINFILE)
 
 FFLAGS ?= flash $(FLASHFILE)
