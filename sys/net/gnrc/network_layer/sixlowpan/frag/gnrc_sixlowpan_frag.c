@@ -27,7 +27,7 @@
 #include "net/sixlowpan.h"
 #include "utlist.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
 
 static gnrc_sixlowpan_msg_frag_t _fragment_msg[GNRC_SIXLOWPAN_MSG_FRAG_SIZE];
@@ -143,7 +143,7 @@ static uint16_t _send_1st_fragment(gnrc_netif_t *iface,
                                      payload_diff - sizeof(sixlowpan_frag_t)) -
                              payload_diff;
 
-    DEBUG("6lo frag: determined max_frag_size = %" PRIu16 "\n", max_frag_size);
+    //DEBUG("6lo frag: determined max_frag_size = %" PRIu16 "\n", max_frag_size);
 
     frag = _build_frag_pkt(pkt, fragment_msg, payload_len,
                            max_frag_size + sizeof(sixlowpan_frag_t));
@@ -175,9 +175,9 @@ static uint16_t _send_1st_fragment(gnrc_netif_t *iface,
         pkt = pkt->next;
     }
 
-    DEBUG("6lo frag: send first fragment (datagram size: %u, "
-          "datagram tag: %" PRIu16 ", fragment size: %" PRIu16 ")\n",
-          fragment_msg->datagram_size, fragment_msg->tag, local_offset);
+    //DEBUG("6lo frag: send first fragment (datagram size: %u, "
+    //      "datagram tag: %" PRIu16 ", fragment size: %" PRIu16 ")\n",
+    //      fragment_msg->datagram_size, fragment_msg->tag, local_offset);
     gnrc_sixlowpan_dispatch_send(frag, NULL, 0);
     return local_offset;
 }
@@ -195,7 +195,7 @@ static uint16_t _send_nth_fragment(gnrc_netif_t *iface,
     uint16_t max_frag_size = _floor8(iface->sixlo.max_frag_size -
                                      sizeof(sixlowpan_frag_n_t));
 
-    DEBUG("6lo frag: determined max_frag_size = %" PRIu16 "\n", max_frag_size);
+    //DEBUG("6lo frag: determined max_frag_size = %" PRIu16 "\n", max_frag_size);
 
     frag = _build_frag_pkt(pkt, fragment_msg,
                            payload_len - offset + sizeof(sixlowpan_frag_n_t),
@@ -257,11 +257,11 @@ static uint16_t _send_nth_fragment(gnrc_netif_t *iface,
         }
     }
 
-    DEBUG("6lo frag: send subsequent fragment (datagram size: %u, "
-          "datagram tag: %" PRIu16 ", offset: %" PRIu8 " (%u bytes), "
-          "fragment size: %" PRIu16 ")\n",
-          fragment_msg->datagram_size, fragment_msg->tag, hdr->offset,
-          hdr->offset << 3, local_offset);
+    //DEBUG("6lo frag: send subsequent fragment (datagram size: %u, "
+    //      "datagram tag: %" PRIu16 ", offset: %" PRIu8 " (%u bytes), "
+    //      "fragment size: %" PRIu16 ")\n",
+    //      fragment_msg->datagram_size, fragment_msg->tag, hdr->offset,
+    //      hdr->offset << 3, local_offset);
     gnrc_sixlowpan_dispatch_send(frag, NULL, 0);
     return local_offset;
 }
