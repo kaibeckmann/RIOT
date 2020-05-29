@@ -145,6 +145,8 @@ static uint8_t _transmit_buffer[IEEE802154_FRAME_LEN_MAX + 1];
  */
 static rail_t *_rail_dev = NULL;
 
+static volatile bool tx_wait_for_ack;
+
 /************************ private functions *********************************/
 
 /* callback handler for RAIL driver blob, get called to handle events.
@@ -274,6 +276,9 @@ int rail_init(rail_t *dev)
 
     dev->state = RAIL_TRANSCEIVER_STATE_UNINITIALIZED;
 
+    dev->tx_wait_for_ack = false;
+    tx_wait_for_ack = false;
+
     /* init the queue for the rail events */
     rail_event_queue_init(&(dev->event_queue));
 
@@ -285,7 +290,7 @@ int rail_init(rail_t *dev)
     RAIL_Version_t rail_version;
     RAIL_GetVersion(&rail_version, true);
 
-    DEBUG("Using Silicon Labs RAIL Lib. Version %u.%u Rev: %u build: %u multiprotocol: %s \n",
+    LOG_INFO("Using Silicon Labs RAIL Lib. Version %u.%u Rev: %u build: %u multiprotocol: %s \n",
           rail_version.major, rail_version.minor, rail_version.rev, rail_version.build,
           rail_version.multiprotocol ? "YES" : "NO");
 
@@ -495,9 +500,15 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
        otherwise the transceiver might be receiving/transmitting and the new
        transmit op fails.
        TODO ensure there are no other running ops
-     */
-    RAIL_Idle(dev->rhandle, RAIL_IDLE_ABORT, true);
+    */
+/*
+    while (tx_wait_for_ack == true) {
+    //    LOG_INFO("wait for ack\n");
+        thread_yield();
+    }
+*/
 
+    RAIL_Idle(dev->rhandle, RAIL_IDLE_ABORT, true);
     /* write packet payload in the buffer of the rail driver blob*/
     RAIL_WriteTxFifo(dev->rhandle, data_ptr, data_length, true);
 
@@ -509,13 +520,16 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
 
     /* check if ack req is requested */
 
+
     if (dev->netdev.flags & NETDEV_IEEE802154_ACK_REQ) {
         tx_option |= RAIL_TX_OPTION_WAIT_FOR_ACK;
         DEBUG("tx option auto ack\n");
         /* TODO wait for ack, necessary or done by layer above? */
+        dev->tx_wait_for_ack = true;
+        tx_wait_for_ack = true;
     }
 
-    DEBUG("[rail] transmit - radio state: %s\n", rail_radioState2str(RAIL_GetRadioState(dev->rhandle)));
+    LOG_INFO("[rail] transmit - radio state: %s\n", rail_radioState2str(RAIL_GetRadioState(dev->rhandle)));
 
     /* start tx with settings in csma_config
      */
@@ -529,6 +543,8 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
         LOG_ERROR("Can't start transmit - current state %s - error msg: %s \n",
                   rail_radioState2str(RAIL_GetRadioState(dev->rhandle)),
                   rail_error2str(ret));
+        dev->tx_wait_for_ack = false;
+        tx_wait_for_ack = false;
         rail_start_rx(dev);
         return -1;
     }
@@ -544,6 +560,8 @@ int rail_transmit_frame(rail_t *dev, uint8_t *data_ptr, size_t data_length)
     while (RAIL_GetRadioState(dev->rhandle) & RAIL_RF_STATE_TX) {}
 
     rail_start_rx(dev);
+
+    
     return 0;
 }
 
@@ -647,9 +665,24 @@ static void _rail_radio_event_handler(RAIL_Handle_t rhandle, RAIL_Events_t event
         DEBUG("[rail] rx packet event - len p 0x%02x - len2 0x%02x\n",
               event_msg.rx_packet_info.firstPortionData[0],
               event_msg.rx_packet_info.packetBytes);
+        
+        /* get more infos about the packet */
+        RAIL_RxPacketDetails_t pack_details;
+        /* clear info struct */
+        memset(&pack_details, 0, sizeof(RAIL_RxPacketDetails_t));
+
+        RAIL_GetRxPacketDetails(dev->rhandle, rx_handle, &pack_details);
+
+        if (pack_details.isAck == true) {
+            dev->tx_wait_for_ack = false;
+            tx_wait_for_ack = false;
+            LOG_INFO("got ack\n");
+        }
 
         if (event_msg.rx_packet_info.packetStatus != RAIL_RX_PACKET_READY_SUCCESS) {
             /* error */
+            dev->tx_wait_for_ack = false;
+            tx_wait_for_ack = false;
 
             DEBUG("Got an packet with an error - packet status msg: %s \n",
                   rail_packetStatus2str(event_msg.rx_packet_info.packetStatus));

@@ -143,6 +143,16 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
           timeout update stat and continue
      */
 
+    /* wait for last tx op to finish */
+    RAIL_RadioState_t state = RAIL_GetRadioState(dev->rhandle);
+
+    while (state & RAIL_RF_STATE_TX) {
+        state = RAIL_GetRadioState(dev->rhandle);
+    }
+
+    /* wait for missig ack */
+
+
     /* prepare frame, cpy header and payload */
     for (const iolist_t *iol = iolist; iol; iol = iol->iol_next) {
         /* current packet data + FCS too long */
@@ -266,21 +276,26 @@ static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 
     if (ret != RAIL_STATUS_NO_ERROR) {
         LOG_ERROR("Error receiving new packet / frame - msg: %s\n", rail_error2str(ret));
+        dev->tx_wait_for_ack = false;
         return -1;
     }
 
-    DEBUG("time received: %lu "
-          "crcStatus %s "
-          "isAck: %s "
-          "subPhy: %u "
-          "rssiLatch: %d dBm "
-          "lqi: %u "
-          "syncWordId: %u "
-          "antenna id: %u "
+    if (pack_details.isAck == true) {
+        dev->tx_wait_for_ack = false;
+    }
+    //DEBUG
+    LOG_INFO("time received: %lu; "
+          "crc %s; "
+          "%s; "
+          "subPhy: %u; "
+          "rssi: %d dBm; "
+          "lqi: %u; "
+          "syncWordId: %u; "
+          "antenna id: %u; "
           "payload size: %u \n",
           pack_details.timeReceived.packetTime,
-          pack_details.crcPassed ? "Passed" : "Failed",
-          pack_details.isAck ? "Ack" : "Not a Ack",
+          pack_details.crcPassed ? "OK" : "Failed",
+          pack_details.isAck ? "Ack" : "Data",
           pack_details.subPhyId,
           pack_details.rssi,
           pack_details.lqi,
@@ -370,6 +385,9 @@ static void _isr(netdev_t *netdev)
     if (event & RAIL_EVENT_RX_ACK_TIMEOUT) {
         DEBUG("Rail event RX ACK TIMEOUT\n");
         /* ack timeout for tx acks? TODO confirm */
+
+        dev->tx_wait_for_ack = false;
+
         dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_NOACK);
     }
 
@@ -396,6 +414,9 @@ static void _isr(netdev_t *netdev)
 
     if (event & RAIL_EVENT_TX_CHANNEL_BUSY) {
         DEBUG("Rail event Tx channel busy\n");
+
+        dev->tx_wait_for_ack = false;
+
         dev->netdev.netdev.event_callback((netdev_t *)&dev->netdev, NETDEV_EVENT_TX_MEDIUM_BUSY);
 
         /* TODO set state? */
@@ -405,6 +426,7 @@ static void _isr(netdev_t *netdev)
     if (event & RAIL_EVENT_TX_ABORTED) {
         DEBUG("Rail event Tx aborted\n");
 
+        dev->tx_wait_for_ack = false;
         /* TODO set state? */
     }
 
@@ -416,6 +438,8 @@ static void _isr(netdev_t *netdev)
      */
     if (event & RAIL_EVENT_TX_BLOCKED) {
         DEBUG("Rail event Tx blocked\n");
+
+        dev->tx_wait_for_ack = false;
 
         /* TODO how to notify layer above? */
         /* TODO set state? */
@@ -432,6 +456,8 @@ static void _isr(netdev_t *netdev)
                  " while transmitting new package, please file a bug report\n");
         /* should not happen as long as the packet is written as whole into the
            RAIL driver blob buffer*/
+
+        dev->tx_wait_for_ack = false;
     }
 
     /* TODO RAIL_EVENT_TXACK_UNDERFLOW */

@@ -165,6 +165,8 @@ typedef struct {
 
     uint8_t state;                  /**< state of the radio transceiver */
 
+    bool tx_wait_for_ack;           /**< flag set true, if still waiting for an ack */
+
     rail_event_queue_t event_queue; /**< event queue for the netdev layer */
 
     uint32_t event_count;           /**< stat / debug info, how many rail events have occured */
